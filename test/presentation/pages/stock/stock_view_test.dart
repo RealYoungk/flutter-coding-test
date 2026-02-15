@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_coding_test/domain/stock/stock.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
-import 'package:flutter_coding_test/presentation/stock/stock_provider.dart';
-import 'package:flutter_coding_test/presentation/stock/stock_view.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +30,8 @@ void main() {
         ),
       );
 
+      when(() => mockStockRepository.connect()).thenAnswer((_) async {});
+      when(() => mockStockRepository.disconnect()).thenReturn(null);
       when(() => mockStockRepository.stockTickStream(any<String>())).thenAnswer(
         (_) => const Stream.empty(),
       );

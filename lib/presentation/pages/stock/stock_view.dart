@@ -1,8 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
-import 'package:flutter_coding_test/presentation/stock/stock_page.dart';
-import 'package:flutter_coding_test/presentation/stock/stock_provider.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_page.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
 import 'package:provider/provider.dart';
 
 class StockView extends StatelessWidget {
@@ -100,24 +100,6 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
 class StockPriceView extends StatelessWidget {
   const StockPriceView({super.key});
 
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]},',
-    );
-  }
-
-  String _formatChangeRate(double rate) {
-    final sign = rate >= 0 ? '+' : '';
-    return '$sign${rate.toStringAsFixed(2)}%';
-  }
-
-  Color _changeRateColor(double rate) {
-    if (rate > 0) return Colors.red;
-    if (rate < 0) return Colors.blue;
-    return Colors.grey;
-  }
-
   @override
   Widget build(BuildContext context) {
     final stock = context.select<StockProvider, ({int currentPrice, double changeRate, List<int> priceHistory})>(
@@ -180,6 +162,24 @@ class StockPriceView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (match) => '${match[1]},',
+    );
+  }
+
+  String _formatChangeRate(double rate) {
+    final sign = rate >= 0 ? '+' : '';
+    return '$sign${rate.toStringAsFixed(2)}%';
+  }
+
+  Color _changeRateColor(double rate) {
+    if (rate > 0) return Colors.red;
+    if (rate < 0) return Colors.blue;
+    return Colors.grey;
   }
 }
 

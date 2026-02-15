@@ -3,8 +3,8 @@ import 'package:flutter_coding_test/core/di/injection.dart';
 import 'package:flutter_coding_test/domain/stock/stock.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
-import 'package:flutter_coding_test/presentation/stock/stock_provider.dart';
-import 'package:flutter_coding_test/presentation/stock/stock_view.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_view.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:provider/provider.dart';
 
