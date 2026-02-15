@@ -1,104 +1,45 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
 import 'package:flutter_coding_test/presentation/stock/stock_provider.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:provider/provider.dart';
 
-class StockView extends StatefulWidget {
+class StockView extends HookWidget {
   const StockView({super.key});
 
   @override
-  State<StockView> createState() => _StockViewState();
-}
-
-class _StockViewState extends State<StockView> with SingleTickerProviderStateMixin {
-  final _scrollController = ScrollController();
-  late final TabController _tabController;
-  late final List<GlobalKey> _sectionKeys;
-  bool _isTabTap = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final provider = context.read<StockProvider>();
-    _sectionKeys = List.generate(provider.sectionTitles.length, (_) => GlobalKey());
-    _tabController = TabController(length: provider.sectionTitles.length, vsync: this);
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final provider = context.read<StockProvider>();
+
+    final tabScrollController = useTabScrollController(tabViewCount: provider.sectionTitles.length);
+
     return Scaffold(
       appBar: StockAppBarView(
-        tabController: _tabController,
-        onTabTap: _scrollToSection,
+        tabController: tabScrollController.tabController,
+        onTabTap: tabScrollController.scrollTo,
       ),
       body: ListView(
-        controller: _scrollController,
+        key: tabScrollController.viewportKey,
+        controller: tabScrollController.scrollController,
         children: [
-          StockPriceView(key: _sectionKeys[0]),
+          StockPriceView(key: tabScrollController.keys[0]),
           const Divider(),
-          StockSummaryView(key: _sectionKeys[1]),
+          StockSummaryView(key: tabScrollController.keys[1]),
           const Divider(),
-          StockInputView(key: _sectionKeys[2]),
+          StockInputView(key: tabScrollController.keys[2]),
           const Divider(),
-          StockExpansionView(key: _sectionKeys[3]),
+          StockExpansionView(key: tabScrollController.keys[3]),
           const Divider(),
-          StockEtcView(key: _sectionKeys[4]),
+          StockEtcView(key: tabScrollController.keys[4]),
         ],
       ),
     );
   }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _scrollToSection(int index) {
-    final keyContext = _sectionKeys[index].currentContext;
-    if (keyContext == null) return;
-
-    _isTabTap = true;
-    Scrollable.ensureVisible(
-      keyContext,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    ).then((_) => _isTabTap = false);
-  }
-
-  double get _appBarHeight =>
-      MediaQuery.of(context).padding.top + kToolbarHeight + kTextTabBarHeight;
-
-  void _onScroll() {
-    if (_isTabTap) return;
-
-    final threshold = _appBarHeight;
-
-    for (var i = _sectionKeys.length - 1; i >= 0; i--) {
-      final keyContext = _sectionKeys[i].currentContext;
-      if (keyContext == null) continue;
-
-      final box = keyContext.findRenderObject()! as RenderBox;
-      final position = box.localToGlobal(Offset.zero).dy;
-
-      if (position <= threshold) {
-        if (_tabController.index != i) {
-          _tabController.animateTo(i);
-        }
-        break;
-      }
-    }
-  }
 }
 
 class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
-  const StockAppBarView({
-    super.key,
-    required this.tabController,
-    required this.onTabTap,
-  });
+  const StockAppBarView({super.key, required this.tabController, required this.onTabTap});
 
   final TabController tabController;
   final ValueChanged<int> onTabTap;
@@ -161,29 +102,17 @@ class StockPriceView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '가격',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('가격', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           const Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                '72,500',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-              ),
+              Text('72,500', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
               SizedBox(width: 4),
-              Text(
-                '원',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
+              Text('원', style: TextStyle(fontSize: 16, color: Colors.grey)),
               SizedBox(width: 12),
-              Text(
-                '+1.25%',
-                style: TextStyle(fontSize: 16, color: Colors.red),
-              ),
+              Text('+1.25%', style: TextStyle(fontSize: 16, color: Colors.red)),
             ],
           ),
           const SizedBox(height: 16),
@@ -201,10 +130,7 @@ class StockPriceView extends StatelessWidget {
                     color: Colors.red,
                     barWidth: 2,
                     dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Colors.red.withAlpha(30),
-                    ),
+                    belowBarData: BarAreaData(show: true, color: Colors.red.withAlpha(30)),
                   ),
                 ],
               ),
