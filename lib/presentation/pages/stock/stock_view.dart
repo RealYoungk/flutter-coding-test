@@ -156,10 +156,16 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
           CircleAvatar(
             radius: 16,
             backgroundColor: Colors.blue,
-            foregroundImage: NetworkImage(stock.logoUrl),
+            foregroundImage: stock.logoUrl.isNotEmpty
+                ? NetworkImage(stock.logoUrl)
+                : null,
             onForegroundImageError: stock.logoUrl.isNotEmpty
                 ? (_, _) {}
                 : null,
+            child: Text(
+              stock.name.isNotEmpty ? stock.name[0] : '',
+              style: textTheme.labelMedium?.copyWith(color: Colors.white),
+            ),
           ),
           const SizedBox(width: 8),
           Column(
