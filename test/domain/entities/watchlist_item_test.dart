@@ -1,3 +1,4 @@
+import 'package:const_date_time/const_date_time.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_coding_test/domain/entities/watchlist_item.dart';
 import 'package:flutter_coding_test/domain/entities/alert_type.dart';
@@ -40,6 +41,32 @@ void main() {
         );
 
         expect(item.targetPrice, 150000);
+      });
+    });
+
+    group('디폴트 값', () {
+      test('인자 없이 생성하면 stockCode는 빈 문자열이어야 한다', () {
+        const item = WatchlistItem();
+
+        expect(item.stockCode, '');
+      });
+
+      test('인자 없이 생성하면 targetPrice는 null이어야 한다', () {
+        const item = WatchlistItem();
+
+        expect(item.targetPrice, isNull);
+      });
+
+      test('인자 없이 생성하면 alertType은 AlertType.both이어야 한다', () {
+        const item = WatchlistItem();
+
+        expect(item.alertType, AlertType.both);
+      });
+
+      test('인자 없이 생성하면 createdAt은 ConstDateTime(0)이어야 한다', () {
+        const item = WatchlistItem();
+
+        expect(item.createdAt, const ConstDateTime(0));
       });
     });
 
