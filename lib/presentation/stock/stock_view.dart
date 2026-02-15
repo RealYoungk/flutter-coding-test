@@ -10,7 +10,13 @@ class StockView extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<StockProvider>();
+    final provider = context.watch<StockProvider>();
+
+    if (provider.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     final tabScrollController = useTabScrollController(tabViewCount: provider.sectionTitles.length);
 
@@ -49,7 +55,8 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<StockProvider>();
+    final provider = context.watch<StockProvider>();
+    final stock = provider.stock;
     final textTheme = Theme.of(context).textTheme;
     return AppBar(
       title: Row(
@@ -57,14 +64,17 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
           CircleAvatar(
             radius: 16,
             backgroundColor: Colors.blue,
-            child: Text('삼', style: textTheme.titleSmall?.copyWith(color: Colors.white)),
+            foregroundImage: NetworkImage(stock.logoUrl),
+            onForegroundImageError: stock.logoUrl.isNotEmpty ? (_, __) {
+              return Text(stock.name[0], style: textTheme.titleSmall?.copyWith(color: Colors.white));
+            } : null,
           ),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('삼성전자', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              Text('005930', style: textTheme.bodySmall?.copyWith(color: Colors.grey)),
+              Text(stock.name, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              Text(stock.code, style: textTheme.bodySmall?.copyWith(color: Colors.grey)),
             ],
           ),
         ],
@@ -96,8 +106,27 @@ class StockPriceView extends StatelessWidget {
     FlSpot(9, 72500),
   ];
 
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (match) => '${match[1]},',
+    );
+  }
+
+  String _formatChangeRate(double rate) {
+    final sign = rate >= 0 ? '+' : '';
+    return '$sign${rate.toStringAsFixed(2)}%';
+  }
+
+  Color _changeRateColor(double rate) {
+    if (rate > 0) return Colors.red;
+    if (rate < 0) return Colors.blue;
+    return Colors.grey;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final stock = context.watch<StockProvider>().stock;
     final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -110,11 +139,17 @@ class StockPriceView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('72,500', style: textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                _formatPrice(stock.currentPrice),
+                style: textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(width: 4),
               Text('원', style: textTheme.bodyLarge?.copyWith(color: Colors.grey)),
               const SizedBox(width: 12),
-              Text('+1.25%', style: textTheme.bodyLarge?.copyWith(color: Colors.red)),
+              Text(
+                _formatChangeRate(stock.changeRate),
+                style: textTheme.bodyLarge?.copyWith(color: _changeRateColor(stock.changeRate)),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -129,10 +164,13 @@ class StockPriceView extends StatelessWidget {
                   LineChartBarData(
                     spots: _mockSpots,
                     isCurved: true,
-                    color: Colors.red,
+                    color: _changeRateColor(stock.changeRate),
                     barWidth: 2,
                     dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: true, color: Colors.red.withAlpha(30)),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: _changeRateColor(stock.changeRate).withAlpha(30),
+                    ),
                   ),
                 ],
               ),

@@ -11,7 +11,7 @@ class StockTickDataSourceEzar {
   final _random = Random();
   Timer? _timer;
 
-  static const _stockCodes = ['005930', '000660', '035720', '035420', '005380'];
+  static const _stockCode = '005930';
 
   void connect() {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -27,14 +27,13 @@ class StockTickDataSourceEzar {
   }
 
   void _onMessageReceived() {
-    final code = _stockCodes[_random.nextInt(_stockCodes.length)];
     final price = 50000 + _random.nextInt(200000);
     final changeRate = (_random.nextDouble() * 6.0) - 3.0;
 
     _subject.add(
       StockTickMessage(
         type: 'price_update',
-        stockCode: code,
+        stockCode: _stockCode,
         currentPrice: price,
         changeRate: double.parse(changeRate.toStringAsFixed(2)),
         timestamp: DateTime.now(),

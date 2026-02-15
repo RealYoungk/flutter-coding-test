@@ -8,6 +8,7 @@ abstract class Stock with _$Stock {
   const factory Stock({
     @Default('') String code,
     @Default('') String name,
+    @Default('') String logoUrl,
     @Default(0) int currentPrice,
     @Default(0.0) double changeRate,
     @Default(ConstDateTime(0)) DateTime updatedAt,

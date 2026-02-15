@@ -35,7 +35,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: StockPage(),
+      home: StockPage(stockCode: '005930'),
     );
   }
 }
