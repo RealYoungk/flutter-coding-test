@@ -23,39 +23,16 @@ class _StockViewState extends State<StockView> {
     super.didChangeDependencies();
     final provider = context.read<StockProvider>();
     if (_provider != provider) {
-      _provider?.removeListener(_onProviderChanged);
+      _provider?.removeListener(_showAlertSnackBar);
       _provider = provider;
-      provider.addListener(_onProviderChanged);
+      provider.addListener(_showAlertSnackBar);
     }
   }
 
   @override
-  void dispose() {
-    _provider?.removeListener(_onProviderChanged);
-    super.dispose();
-  }
-
-  void _onProviderChanged() {
-    final alert = _provider?.triggeredAlert;
-    if (alert == null) return;
-    _provider?.clearAlert();
-    final direction = alert.isUpper ? '상한 돌파' : '하한 돌파';
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-        SnackBar(
-          content: Text('${alert.item.stockCode} 목표가 ${alert.item.targetPrice}원 $direction'),
-        ),
-      );
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final hasError = context.select<StockProvider, bool>((p) => p.hasError);
-    final isLoading = context.select<StockProvider, bool>((p) => p.isLoading);
+    final hasError = context.select<StockProvider, bool>((p) => p.state.hasError);
+    final isLoading = context.select<StockProvider, bool>((p) => p.state.isLoading);
 
     if (hasError) {
       return const Scaffold(
@@ -91,6 +68,29 @@ class _StockViewState extends State<StockView> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _provider?.removeListener(_showAlertSnackBar);
+    super.dispose();
+  }
+
+  void _showAlertSnackBar() {
+    final alert = _provider?.state.triggeredAlert;
+    if (alert == null) return;
+    _provider?.clearAlert();
+    final direction = alert.isUpper ? '상한 돌파' : '하한 돌파';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('${alert.item.stockCode} 목표가 ${alert.item.targetPrice}원 $direction'),
+          ),
+        );
+    });
+  }
 }
 
 class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
@@ -125,9 +125,9 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final stock = context.select<StockProvider, ({String name, String code, String logoUrl})>(
-      (p) => (name: p.stock.name, code: p.stock.code, logoUrl: p.stock.logoUrl),
+      (p) => (name: p.state.stockOrDefault.name, code: p.state.stockOrDefault.code, logoUrl: p.state.stockOrDefault.logoUrl),
     );
-    final isInWatchlist = context.select<StockProvider, bool>((p) => p.isInWatchlist);
+    final isInWatchlist = context.select<StockProvider, bool>((p) => p.state.isInWatchlist);
     final tabViewTitles = StockPage.tabViewTitles;
     final textTheme = Theme.of(context).textTheme;
     return AppBar(
@@ -175,7 +175,7 @@ class StockPriceView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stock = context.select<StockProvider, ({int currentPrice, double changeRate, List<int> priceHistory})>(
-      (p) => (currentPrice: p.stock.currentPrice, changeRate: p.stock.changeRate, priceHistory: p.stock.priceHistory),
+      (p) => (currentPrice: p.state.stockOrDefault.currentPrice, changeRate: p.state.stockOrDefault.changeRate, priceHistory: p.state.stockOrDefault.priceHistory),
     );
     final textTheme = Theme.of(context).textTheme;
     final spots = stock.priceHistory

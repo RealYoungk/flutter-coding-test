@@ -5,6 +5,7 @@ import 'package:flutter_coding_test/domain/stock/stock.dart';
 import 'package:flutter_coding_test/domain/usecases/check_target_price_use_case.dart';
 import 'package:flutter_coding_test/domain/usecases/toggle_watchlist_use_case.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_state.dart';
 
 class StockProvider extends ChangeNotifier {
   StockProvider({
@@ -23,32 +24,24 @@ class StockProvider extends ChangeNotifier {
   final CheckTargetPriceUseCase _checkTargetPriceUseCase;
 
   StreamSubscription<Stock>? _tickSubscription;
-  Stock? _stock;
-  List<WatchlistItem> _watchlist = [];
-  ({WatchlistItem item, bool isUpper})? _triggeredAlert;
 
-  bool get isLoading => _stock == null;
-  bool get hasError => _stock != null && _stock!.code.isEmpty;
-  Stock get stock => _stock ?? const Stock();
-  List<WatchlistItem> get watchlist => _watchlist;
-  bool get isInWatchlist =>
-      _watchlist.any((item) => item.stockCode == stock.code);
-  ({WatchlistItem item, bool isUpper})? get triggeredAlert => _triggeredAlert;
+  StockState _state = const StockState();
+  StockState get state => _state;
 
   void onInitialized(String code) async {
     await _fetchStock(code);
-    if (hasError) return;
+    if (_state.hasError) return;
     await _fetchWatchlist();
     await _subscribeTick(code);
   }
 
   Future<void> onFavoriteToggled(WatchlistItem item) async {
-    await _toggleWatchlistUseCase(item: item, isInWatchlist: isInWatchlist);
+    await _toggleWatchlistUseCase(item: item, isInWatchlist: _state.isInWatchlist);
     await _fetchWatchlist();
   }
 
   void clearAlert() {
-    _triggeredAlert = null;
+    _state = _state.copyWith(triggeredAlert: null);
   }
 
   @override
@@ -60,15 +53,15 @@ class StockProvider extends ChangeNotifier {
 
   Future<void> _fetchStock(String code) async {
     try {
-      _stock = await _stockRepository.getStock(code);
+      _state = _state.copyWith(stock: await _stockRepository.getStock(code));
     } catch (_) {
-      _stock = const Stock();
+      _state = _state.copyWith(stock: const Stock());
     }
     notifyListeners();
   }
 
   Future<void> _fetchWatchlist() async {
-    _watchlist = await _watchlistRepository.getWatchlist();
+    _state = _state.copyWith(watchlist: await _watchlistRepository.getWatchlist());
     notifyListeners();
   }
 
@@ -76,18 +69,20 @@ class StockProvider extends ChangeNotifier {
     await _stockRepository.connect();
     _tickSubscription?.cancel();
     _tickSubscription = _stockRepository.stockTickStream(code).listen((tick) async {
-      final stock = _stock;
+      final stock = _state.stock;
       if (stock == null) return;
       final prevPrice = stock.currentPrice;
-      _stock = stock.copyWith(
-        changeRate: tick.changeRate,
-        priceHistory: [...stock.priceHistory, tick.currentPrice],
-        updatedAt: tick.updatedAt,
-      );
-      _triggeredAlert = await _checkTargetPriceUseCase(
-        stockCode: stock.code,
-        prevPrice: prevPrice,
-        currentPrice: tick.currentPrice,
+      _state = _state.copyWith(
+        stock: stock.copyWith(
+          changeRate: tick.changeRate,
+          priceHistory: [...stock.priceHistory, tick.currentPrice],
+          updatedAt: tick.updatedAt,
+        ),
+        triggeredAlert: await _checkTargetPriceUseCase(
+          stockCode: stock.code,
+          prevPrice: prevPrice,
+          currentPrice: tick.currentPrice,
+        ),
       );
       notifyListeners();
     });
