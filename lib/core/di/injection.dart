@@ -21,10 +21,17 @@ Future<void> initDependencies() async {
     WatchlistRepositoryImpl(getIt<WatchlistDataSourceLocal>()),
   );
   getIt.registerSingleton<StockRepository>(
-    StockRepositoryImpl(getIt<StockDataSourceEzar>(), getIt<StockTickDataSourceEzar>()),
+    StockRepositoryImpl(
+      getIt<StockDataSourceEzar>(),
+      getIt<StockTickDataSourceEzar>(),
+    ),
   );
 
   // UseCases
-  getIt.registerFactory(() => ToggleWatchlistUseCase(getIt<WatchlistRepository>()));
-  getIt.registerFactory(() => CheckTargetPriceUseCase(getIt<WatchlistRepository>()));
+  getIt.registerFactory(
+    () => ToggleWatchlistUseCase(getIt<WatchlistRepository>()),
+  );
+  getIt.registerFactory(
+    () => CheckTargetPriceUseCase(getIt<WatchlistRepository>()),
+  );
 }

@@ -25,19 +25,21 @@ class StockRepositoryImpl implements StockRepository {
 
   @override
   Stream<Stock> stockTickStream(String code) {
-    return _stockTickDataSourceEzar.messageStream.where((tick) {
-      return tick.stockCode == code;
-    }).map((tick) {
-      if (tick.type != 'price_update') {
-        throw UnimplementedError('미구현 메시지 타입: ${tick.type}');
-      }
-      return Stock(
-        code: tick.stockCode,
-        changeRate: tick.changeRate,
-        priceHistory: [tick.currentPrice],
-        updatedAt: tick.timestamp,
-      );
-    });
+    return _stockTickDataSourceEzar.messageStream
+        .where((tick) {
+          return tick.stockCode == code;
+        })
+        .map((tick) {
+          if (tick.type != 'price_update') {
+            throw UnimplementedError('미구현 메시지 타입: ${tick.type}');
+          }
+          return Stock(
+            code: tick.stockCode,
+            changeRate: tick.changeRate,
+            priceHistory: [tick.currentPrice],
+            updatedAt: tick.timestamp,
+          );
+        });
   }
 
   @override

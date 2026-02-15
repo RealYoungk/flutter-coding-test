@@ -11,6 +11,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 
 class _MockStockRepository extends Mock implements StockRepository {}
+
 class _MockWatchlistRepository extends Mock implements WatchlistRepository {}
 
 void main() {
@@ -34,13 +35,13 @@ void main() {
 
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
       when(() => mockStockRepository.disconnect()).thenReturn(null);
-      when(() => mockStockRepository.stockTickStream(any<String>())).thenAnswer(
-        (_) => const Stream.empty(),
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any<String>()),
+      ).thenAnswer((_) => const Stream.empty());
 
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [],
-      );
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => []);
     });
 
     Future<void> pumpStockView(WidgetTester tester) async {
@@ -50,8 +51,12 @@ void main() {
             create: (_) => StockProvider(
               stockRepository: mockStockRepository,
               watchlistRepository: mockWatchlistRepository,
-              toggleWatchlistUseCase: ToggleWatchlistUseCase(mockWatchlistRepository),
-              checkTargetPriceUseCase: CheckTargetPriceUseCase(mockWatchlistRepository),
+              toggleWatchlistUseCase: ToggleWatchlistUseCase(
+                mockWatchlistRepository,
+              ),
+              checkTargetPriceUseCase: CheckTargetPriceUseCase(
+                mockWatchlistRepository,
+              ),
             )..onInitialized('005930'),
             child: _TestStockView(),
           ),
@@ -82,11 +87,26 @@ void main() {
       await pumpStockView(tester);
 
       expect(find.byType(TabBar), findsOneWidget);
-      expect(find.descendant(of: find.byType(TabBar), matching: find.text('가격')), findsOneWidget);
-      expect(find.descendant(of: find.byType(TabBar), matching: find.text('요약')), findsOneWidget);
-      expect(find.descendant(of: find.byType(TabBar), matching: find.text('입력')), findsOneWidget);
-      expect(find.descendant(of: find.byType(TabBar), matching: find.text('확장 패널')), findsOneWidget);
-      expect(find.descendant(of: find.byType(TabBar), matching: find.text('기타')), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(TabBar), matching: find.text('가격')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: find.byType(TabBar), matching: find.text('요약')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: find.byType(TabBar), matching: find.text('입력')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: find.byType(TabBar), matching: find.text('확장 패널')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: find.byType(TabBar), matching: find.text('기타')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('현재 가격이 표시되어야 한다', (tester) async {
@@ -109,7 +129,8 @@ class _TestStockView extends StatefulWidget {
   State<_TestStockView> createState() => _TestStockViewState();
 }
 
-class _TestStockViewState extends State<_TestStockView> with SingleTickerProviderStateMixin {
+class _TestStockViewState extends State<_TestStockView>
+    with SingleTickerProviderStateMixin {
   late final TabScrollController _controller;
 
   @override

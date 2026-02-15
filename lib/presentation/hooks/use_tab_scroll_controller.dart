@@ -21,7 +21,9 @@ TabScrollController useTabScrollController({required int tabViewCount}) {
   final scrollController = useScrollController();
   final tabController = useTabController(initialLength: tabViewCount);
   final viewportKey = useMemoized(GlobalKey.new);
-  final tabViewKeys = useMemoized(() => List.generate(tabViewCount, (_) => GlobalKey()));
+  final tabViewKeys = useMemoized(
+    () => List.generate(tabViewCount, (_) => GlobalKey()),
+  );
   final isScrollingByTap = useRef(false);
 
   double getTopDyOfWidget(GlobalKey key) {

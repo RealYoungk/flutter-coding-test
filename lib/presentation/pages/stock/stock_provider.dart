@@ -13,10 +13,10 @@ class StockProvider extends ChangeNotifier {
     required WatchlistRepository watchlistRepository,
     required ToggleWatchlistUseCase toggleWatchlistUseCase,
     required CheckTargetPriceUseCase checkTargetPriceUseCase,
-  })  : _stockRepository = stockRepository,
-        _watchlistRepository = watchlistRepository,
-        _toggleWatchlistUseCase = toggleWatchlistUseCase,
-        _checkTargetPriceUseCase = checkTargetPriceUseCase;
+  }) : _stockRepository = stockRepository,
+       _watchlistRepository = watchlistRepository,
+       _toggleWatchlistUseCase = toggleWatchlistUseCase,
+       _checkTargetPriceUseCase = checkTargetPriceUseCase;
 
   final StockRepository _stockRepository;
   final WatchlistRepository _watchlistRepository;
@@ -36,7 +36,10 @@ class StockProvider extends ChangeNotifier {
   }
 
   Future<void> onFavoriteToggled(WatchlistItem item) async {
-    await _toggleWatchlistUseCase(item: item, isInWatchlist: _state.isInWatchlist);
+    await _toggleWatchlistUseCase(
+      item: item,
+      isInWatchlist: _state.isInWatchlist,
+    );
     await _fetchWatchlist();
   }
 
@@ -61,14 +64,18 @@ class StockProvider extends ChangeNotifier {
   }
 
   Future<void> _fetchWatchlist() async {
-    _state = _state.copyWith(watchlist: await _watchlistRepository.getWatchlist());
+    _state = _state.copyWith(
+      watchlist: await _watchlistRepository.getWatchlist(),
+    );
     notifyListeners();
   }
 
   Future<void> _subscribeTick(String code) async {
     await _stockRepository.connect();
     _tickSubscription?.cancel();
-    _tickSubscription = _stockRepository.stockTickStream(code).listen((tick) async {
+    _tickSubscription = _stockRepository.stockTickStream(code).listen((
+      tick,
+    ) async {
       final stock = _state.stock;
       if (stock == null) return;
       final prevPrice = stock.currentPrice;

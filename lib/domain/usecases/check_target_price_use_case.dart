@@ -11,9 +11,10 @@ class CheckTargetPriceUseCase {
     required int currentPrice,
   }) async {
     final watchlist = await _repository.getWatchlist();
-    final item = watchlist
-        .cast<WatchlistItem?>()
-        .firstWhere((e) => e!.stockCode == stockCode, orElse: () => null);
+    final item = watchlist.cast<WatchlistItem?>().firstWhere(
+      (e) => e!.stockCode == stockCode,
+      orElse: () => null,
+    );
     final targetPrice = item?.targetPrice;
     if (item == null || targetPrice == null) return null;
 
