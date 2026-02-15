@@ -22,16 +22,16 @@ void main() {
       test('존재하는 종목 코드로 조회하면 Stock 엔티티를 반환해야 한다', () async {
         final stock = await repository.getStock('005930');
 
-        expect(stock, isNotNull);
-        expect(stock!.code, '005930');
+        expect(stock.code, '005930');
         expect(stock.name, '삼성전자');
         expect(stock.currentPrice, greaterThan(0));
       });
 
-      test('존재하지 않는 종목 코드로 조회하면 null을 반환해야 한다', () async {
-        final stock = await repository.getStock('999999');
-
-        expect(stock, isNull);
+      test('존재하지 않는 종목 코드로 조회하면 예외를 던져야 한다', () async {
+        expect(
+          () => repository.getStock('999999'),
+          throwsA(isA<ArgumentError>()),
+        );
       });
     });
 

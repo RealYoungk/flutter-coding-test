@@ -17,9 +17,11 @@ class StockRepositoryImpl implements StockRepository {
   Stream<List<Stock>> get stocksStream => _subject.stream;
 
   @override
-  Future<Stock?> getStock(String code) async {
+  Future<Stock> getStock(String code) async {
     final model = await _stockDataSourceEzar.getStock(code);
-    if (model == null) return null;
+    if (model == null) {
+      throw ArgumentError('존재하지 않는 종목 코드: $code');
+    }
 
     return Stock(
       code: model.code,
@@ -47,7 +49,9 @@ class StockRepositoryImpl implements StockRepository {
 
     _stockTickDataSourceEzar.connect();
     _subscription = _stockTickDataSourceEzar.messageStream.listen((tick) {
-      if (tick.type != 'price_update') return;
+      if (tick.type != 'price_update') {
+        throw UnimplementedError('미구현 메시지 타입: ${tick.type}');
+      }
 
       final updated = _subject.value.map((stock) {
         if (stock.code == tick.stockCode) {
