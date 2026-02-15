@@ -14,7 +14,7 @@ class StockTickDataSourceEzar {
   static const _stockCode = '005930';
 
   void connect() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       _onMessageReceived();
     });
   }

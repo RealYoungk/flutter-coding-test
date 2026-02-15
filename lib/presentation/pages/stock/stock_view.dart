@@ -1,14 +1,56 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_page.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
 import 'package:provider/provider.dart';
 
-class StockView extends StatelessWidget {
+class StockView extends StatefulWidget {
   const StockView({super.key, required this.tabScrollController});
 
   final TabScrollController tabScrollController;
+
+  @override
+  State<StockView> createState() => _StockViewState();
+}
+
+class _StockViewState extends State<StockView> {
+  StockProvider? _provider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<StockProvider>();
+    if (_provider != provider) {
+      _provider?.removeListener(_onProviderChanged);
+      _provider = provider;
+      provider.addListener(_onProviderChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _provider?.removeListener(_onProviderChanged);
+    super.dispose();
+  }
+
+  void _onProviderChanged() {
+    final alert = _provider?.triggeredAlert;
+    if (alert == null) return;
+    _provider?.clearAlert();
+    final direction = alert.isUpper ? '상한 돌파' : '하한 돌파';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+        SnackBar(
+          content: Text('${alert.item.stockCode} 목표가 ${alert.item.targetPrice}원 $direction'),
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,22 +71,22 @@ class StockView extends StatelessWidget {
 
     return Scaffold(
       appBar: StockAppBarView(
-        tabController: tabScrollController.tabController,
-        onTabTap: tabScrollController.scrollTo,
+        tabController: widget.tabScrollController.tabController,
+        onTabTap: widget.tabScrollController.scrollTo,
       ),
       body: ListView(
-        key: tabScrollController.viewportKey,
-        controller: tabScrollController.scrollController,
+        key: widget.tabScrollController.viewportKey,
+        controller: widget.tabScrollController.scrollController,
         children: [
-          StockPriceView(key: tabScrollController.keys[0]),
+          StockPriceView(key: widget.tabScrollController.keys[0]),
           const Divider(),
-          StockSummaryView(key: tabScrollController.keys[1]),
+          StockSummaryView(key: widget.tabScrollController.keys[1]),
           const Divider(),
-          StockInputView(key: tabScrollController.keys[2]),
+          StockInputView(key: widget.tabScrollController.keys[2]),
           const Divider(),
-          StockExpansionView(key: tabScrollController.keys[3]),
+          StockExpansionView(key: widget.tabScrollController.keys[3]),
           const Divider(),
-          StockEtcView(key: tabScrollController.keys[4]),
+          StockEtcView(key: widget.tabScrollController.keys[4]),
         ],
       ),
     );
@@ -60,11 +102,32 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight + kTextTabBarHeight);
 
+  Future<void> _onWatchlistToggled(BuildContext context, String stockCode, bool isInWatchlist) async {
+    final provider = context.read<StockProvider>();
+    if (isInWatchlist) {
+      await provider.onFavoriteToggled(WatchlistItem(stockCode: stockCode));
+      return;
+    }
+    if (!context.mounted) return;
+    final result = await showDialog<({int targetPrice, AlertType alertType})>(
+      context: context,
+      builder: (_) => const _WatchlistDialog(),
+    );
+    if (result == null) return;
+    await provider.onFavoriteToggled(WatchlistItem(
+      stockCode: stockCode,
+      targetPrice: result.targetPrice,
+      alertType: result.alertType,
+      createdAt: DateTime.now(),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final stock = context.select<StockProvider, ({String name, String code, String logoUrl})>(
       (p) => (name: p.stock.name, code: p.stock.code, logoUrl: p.stock.logoUrl),
     );
+    final isInWatchlist = context.select<StockProvider, bool>((p) => p.isInWatchlist);
     final tabViewTitles = StockPage.tabViewTitles;
     final textTheme = Theme.of(context).textTheme;
     return AppBar(
@@ -86,6 +149,15 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            isInWatchlist ? Icons.favorite : Icons.favorite_border,
+            color: isInWatchlist ? Colors.red : null,
+          ),
+          onPressed: () => _onWatchlistToggled(context, stock.code, isInWatchlist),
+        ),
+      ],
       bottom: TabBar(
         controller: tabController,
         isScrollable: true,
@@ -338,6 +410,79 @@ class StockEtcView extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WatchlistDialog extends StatefulWidget {
+  const _WatchlistDialog();
+
+  @override
+  State<_WatchlistDialog> createState() => _WatchlistDialogState();
+}
+
+class _WatchlistDialogState extends State<_WatchlistDialog> {
+  final _priceController = TextEditingController();
+  AlertType _alertType = AlertType.both;
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  String _alertTypeLabel(AlertType type) => switch (type) {
+        AlertType.upper => '상한가',
+        AlertType.lower => '하한가',
+        AlertType.both => '양방향',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('관심 종목 추가'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _priceController,
+            decoration: const InputDecoration(
+              labelText: '목표가',
+              hintText: '목표 가격을 입력하세요',
+              border: OutlineInputBorder(),
+              suffixText: '원',
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          SegmentedButton<AlertType>(
+            segments: AlertType.values
+                .map((type) => ButtonSegment(
+                      value: type,
+                      label: Text(_alertTypeLabel(type)),
+                    ))
+                .toList(),
+            selected: {_alertType},
+            onSelectionChanged: (selected) {
+              setState(() => _alertType = selected.first);
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final price = int.tryParse(_priceController.text);
+            if (price == null) return;
+            Navigator.pop(context, (targetPrice: price, alertType: _alertType));
+          },
+          child: const Text('추가'),
+        ),
+      ],
     );
   }
 }

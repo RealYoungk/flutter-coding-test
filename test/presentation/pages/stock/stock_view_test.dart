@@ -35,6 +35,10 @@ void main() {
       when(() => mockStockRepository.stockTickStream(any<String>())).thenAnswer(
         (_) => const Stream.empty(),
       );
+
+      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
+        (_) async => [],
+      );
     });
 
     Future<void> pumpStockView(WidgetTester tester) async {
