@@ -1,5 +1,5 @@
 import 'package:const_date_time/const_date_time.dart';
-import 'package:flutter_coding_test/data/ezar/stock_model.dart';
+import 'package:flutter_coding_test/data/ezar/models/stock_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,5 +1,5 @@
 import 'package:const_date_time/const_date_time.dart';
-import 'package:flutter_coding_test/data/local/watchlist_item_model.dart';
+import 'package:flutter_coding_test/data/local/models/watchlist_item_model.dart';
 import 'package:flutter_coding_test/domain/watchlist/entities/alert_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
