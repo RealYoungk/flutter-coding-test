@@ -29,10 +29,11 @@ class StockProvider extends ChangeNotifier {
   StockState _state = const StockState();
   StockState get state => _state;
 
-  void onInitialized(String code) async {
+  Future<void> onInitialized(String code) async {
     await _fetchStock(code);
-    if (_state.hasError) return;
+    if (_disposed || _state.hasError) return;
     await _fetchWatchlist();
+    if (_disposed) return;
     await _subscribeTick(code);
   }
 
