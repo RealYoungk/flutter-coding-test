@@ -47,6 +47,7 @@ class StockProvider extends ChangeNotifier {
 
   void clearAlert() {
     _state = _state.copyWith(triggeredAlert: null);
+    notifyListeners();
   }
 
   @override
