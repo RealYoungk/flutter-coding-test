@@ -15,7 +15,7 @@ void main() {
     });
 
     group('connect', () {
-      test('연결 후 1초마다 메시지를 수신해야 한다', () {
+      test('연결 후 5초마다 메시지를 수신해야 한다', () {
         fakeAsync((async) {
           final messages = <dynamic>[];
           dataSource.messageStream.listen(messages.add);
@@ -23,10 +23,10 @@ void main() {
           dataSource.connect();
           expect(messages, isEmpty);
 
-          async.elapse(const Duration(seconds: 1));
+          async.elapse(const Duration(seconds: 5));
           expect(messages, hasLength(1));
 
-          async.elapse(const Duration(seconds: 2));
+          async.elapse(const Duration(seconds: 10));
           expect(messages, hasLength(3));
         });
       });
@@ -37,7 +37,7 @@ void main() {
           dataSource.messageStream.listen(messages.add);
 
           dataSource.connect();
-          async.elapse(const Duration(seconds: 1));
+          async.elapse(const Duration(seconds: 5));
 
           expect(messages.first.type, 'price_update');
         });
@@ -94,7 +94,7 @@ void main() {
           dataSource.messageStream.listen(messages.add);
 
           dataSource.connect();
-          async.elapse(const Duration(seconds: 1));
+          async.elapse(const Duration(seconds: 5));
 
           expect(messages.first.timestamp, isNotNull);
         });
@@ -108,11 +108,11 @@ void main() {
           dataSource.messageStream.listen(messages.add);
 
           dataSource.connect();
-          async.elapse(const Duration(seconds: 2));
+          async.elapse(const Duration(seconds: 10));
           expect(messages, hasLength(2));
 
           dataSource.disconnect();
-          async.elapse(const Duration(seconds: 3));
+          async.elapse(const Duration(seconds: 15));
           expect(messages, hasLength(2));
         });
       });

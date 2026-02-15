@@ -2,17 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_coding_test/domain/stock/stock.dart';
+import 'package:flutter_coding_test/domain/usecases/check_target_price_use_case.dart';
+import 'package:flutter_coding_test/domain/usecases/toggle_watchlist_use_case.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 
 class StockProvider extends ChangeNotifier {
   StockProvider({
     required StockRepository stockRepository,
     required WatchlistRepository watchlistRepository,
+    required ToggleWatchlistUseCase toggleWatchlistUseCase,
+    required CheckTargetPriceUseCase checkTargetPriceUseCase,
   })  : _stockRepository = stockRepository,
-        _watchlistRepository = watchlistRepository;
+        _watchlistRepository = watchlistRepository,
+        _toggleWatchlistUseCase = toggleWatchlistUseCase,
+        _checkTargetPriceUseCase = checkTargetPriceUseCase;
 
   final StockRepository _stockRepository;
   final WatchlistRepository _watchlistRepository;
+  final ToggleWatchlistUseCase _toggleWatchlistUseCase;
+  final CheckTargetPriceUseCase _checkTargetPriceUseCase;
 
   StreamSubscription<Stock>? _tickSubscription;
   Stock? _stock;
@@ -35,16 +43,7 @@ class StockProvider extends ChangeNotifier {
   }
 
   Future<void> onFavoriteToggled(WatchlistItem item) async {
-    if (isInWatchlist) {
-      await _watchlistRepository.removeItem(item.stockCode);
-    } else {
-      await _watchlistRepository.addItem(item);
-    }
-    await _fetchWatchlist();
-  }
-
-  Future<void> updateWatchlistItem(WatchlistItem item) async {
-    await _watchlistRepository.updateItem(item);
+    await _toggleWatchlistUseCase(item: item, isInWatchlist: isInWatchlist);
     await _fetchWatchlist();
   }
 
@@ -76,7 +75,7 @@ class StockProvider extends ChangeNotifier {
   Future<void> _subscribeTick(String code) async {
     await _stockRepository.connect();
     _tickSubscription?.cancel();
-    _tickSubscription = _stockRepository.stockTickStream(code).listen((tick) {
+    _tickSubscription = _stockRepository.stockTickStream(code).listen((tick) async {
       final stock = _stock;
       if (stock == null) return;
       final prevPrice = stock.currentPrice;
@@ -85,27 +84,12 @@ class StockProvider extends ChangeNotifier {
         priceHistory: [...stock.priceHistory, tick.currentPrice],
         updatedAt: tick.updatedAt,
       );
-      _checkTargetPrice(prevPrice, tick.currentPrice);
+      _triggeredAlert = await _checkTargetPriceUseCase(
+        stockCode: stock.code,
+        prevPrice: prevPrice,
+        currentPrice: tick.currentPrice,
+      );
       notifyListeners();
     });
-  }
-
-  void _checkTargetPrice(int prevPrice, int currentPrice) {
-    final item = _watchlist
-        .cast<WatchlistItem?>()
-        .firstWhere((e) => e!.stockCode == stock.code, orElse: () => null);
-    final targetPrice = item?.targetPrice;
-    if (item == null || targetPrice == null) return;
-
-    final crossedUp = prevPrice < targetPrice && currentPrice >= targetPrice;
-    final crossedDown = prevPrice > targetPrice && currentPrice <= targetPrice;
-
-    final reached = switch (item.alertType) {
-      AlertType.upper => crossedUp,
-      AlertType.lower => crossedDown,
-      AlertType.both => crossedUp || crossedDown,
-    };
-
-    if (reached) _triggeredAlert = (item: item, isUpper: crossedUp);
   }
 }

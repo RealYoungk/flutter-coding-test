@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_coding_test/core/di/injection.dart';
 import 'package:flutter_coding_test/domain/stock/stock.dart';
+import 'package:flutter_coding_test/domain/usecases/check_target_price_use_case.dart';
+import 'package:flutter_coding_test/domain/usecases/toggle_watchlist_use_case.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
@@ -25,6 +27,8 @@ class StockPage extends HookWidget {
       create: (_) => StockProvider(
         stockRepository: getIt<StockRepository>(),
         watchlistRepository: getIt<WatchlistRepository>(),
+        toggleWatchlistUseCase: getIt<ToggleWatchlistUseCase>(),
+        checkTargetPriceUseCase: getIt<CheckTargetPriceUseCase>(),
       )..onInitialized(stockCode),
       child: StockView(tabScrollController: tabScrollController),
     );

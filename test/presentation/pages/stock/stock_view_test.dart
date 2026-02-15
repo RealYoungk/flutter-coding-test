@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_coding_test/domain/stock/stock.dart';
+import 'package:flutter_coding_test/domain/usecases/check_target_price_use_case.dart';
+import 'package:flutter_coding_test/domain/usecases/toggle_watchlist_use_case.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
@@ -48,6 +50,8 @@ void main() {
             create: (_) => StockProvider(
               stockRepository: mockStockRepository,
               watchlistRepository: mockWatchlistRepository,
+              toggleWatchlistUseCase: ToggleWatchlistUseCase(mockWatchlistRepository),
+              checkTargetPriceUseCase: CheckTargetPriceUseCase(mockWatchlistRepository),
             )..onInitialized('005930'),
             child: _TestStockView(),
           ),
