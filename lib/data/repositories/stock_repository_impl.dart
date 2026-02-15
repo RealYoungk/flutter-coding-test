@@ -32,6 +32,7 @@ class StockRepositoryImpl implements StockRepository {
     );
   }
 
+  @override
   Future<void> connect() async {
     final models = await _stockDataSourceEzar.getStocks();
     final stocks = models
@@ -67,6 +68,7 @@ class StockRepositoryImpl implements StockRepository {
     });
   }
 
+  @override
   void disconnect() {
     _subscription?.cancel();
     _stockTickDataSourceEzar.disconnect();

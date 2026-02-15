@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_coding_test/core/di/injection.dart';
+import 'package:flutter_coding_test/hive_registrar.g.dart';
+import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 void main() {
   FlutterError.onError = (details) {
@@ -9,8 +12,13 @@ void main() {
   };
 
   runZonedGuarded(
-    () {
+    () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      await Hive.initFlutter();
+      Hive.registerAdapters();
+
+      await initDependencies();
       runApp(const MainApp());
     },
     (error, stackTrace) {
