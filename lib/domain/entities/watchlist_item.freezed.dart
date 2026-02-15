@@ -209,13 +209,13 @@ return $default(_that.stockCode,_that.targetPrice,_that.alertType,_that.createdA
 
 
 class _WatchlistItem implements WatchlistItem {
-  const _WatchlistItem({required this.stockCode, this.targetPrice, required this.alertType, required this.createdAt});
+  const _WatchlistItem({this.stockCode = '', this.targetPrice, this.alertType = AlertType.both, this.createdAt = const ConstDateTime(0)});
   
 
-@override final  String stockCode;
+@override@JsonKey() final  String stockCode;
 @override final  int? targetPrice;
-@override final  AlertType alertType;
-@override final  DateTime createdAt;
+@override@JsonKey() final  AlertType alertType;
+@override@JsonKey() final  DateTime createdAt;
 
 /// Create a copy of WatchlistItem
 /// with the given fields replaced by the non-null parameter values.
