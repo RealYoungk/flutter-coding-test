@@ -13,18 +13,6 @@ class _StockWatchlistDialogState extends State<StockWatchlistDialog> {
   AlertType _alertType = AlertType.both;
 
   @override
-  void dispose() {
-    _priceController.dispose();
-    super.dispose();
-  }
-
-  String _alertTypeLabel(AlertType type) => switch (type) {
-    AlertType.upper => '상한가',
-    AlertType.lower => '하한가',
-    AlertType.both => '양방향',
-  };
-
-  @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('관심 종목 추가'),
@@ -47,7 +35,7 @@ class _StockWatchlistDialogState extends State<StockWatchlistDialog> {
                 .map(
                   (type) => ButtonSegment(
                     value: type,
-                    label: Text(_alertTypeLabel(type)),
+                    label: Text(type.label),
                   ),
                 )
                 .toList(),
@@ -73,5 +61,11 @@ class _StockWatchlistDialogState extends State<StockWatchlistDialog> {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
   }
 }
