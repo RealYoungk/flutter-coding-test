@@ -37,10 +37,33 @@ class StockProvider extends ChangeNotifier {
     await _subscribeTick(code);
   }
 
-  Future<void> onFavoriteToggled(WatchlistItem item) async {
+  /// 관심종목 토글. 이미 등록된 경우 제거 후 false 반환.
+  /// 미등록 시 true 반환 (다이얼로그 필요).
+  Future<bool> onFavoriteToggled(String stockCode) async {
+    if (_state.isInWatchlist) {
+      await _toggleWatchlistUseCase(
+        item: WatchlistItem(stockCode: stockCode),
+        isInWatchlist: true,
+      );
+      await _fetchWatchlist();
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> onWatchlistAdded({
+    required String stockCode,
+    required int targetPrice,
+    required AlertType alertType,
+  }) async {
     await _toggleWatchlistUseCase(
-      item: item,
-      isInWatchlist: _state.isInWatchlist,
+      item: WatchlistItem(
+        stockCode: stockCode,
+        targetPrice: targetPrice,
+        alertType: alertType,
+        createdAt: DateTime.now(),
+      ),
+      isInWatchlist: false,
     );
     await _fetchWatchlist();
   }

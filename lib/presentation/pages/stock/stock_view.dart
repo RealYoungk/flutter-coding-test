@@ -31,41 +31,44 @@ class _StockViewState extends State<StockView> {
 
   @override
   Widget build(BuildContext context) {
-    final hasError = context.select<StockProvider, bool>(
-      (p) => p.state.hasError,
-    );
-    final isLoading = context.select<StockProvider, bool>(
-      (p) => p.state.isLoading,
-    );
-
-    if (hasError) {
-      return const Scaffold(body: Center(child: Text('종목 정보를 불러오지 못했습니다.')));
-    }
-
-    if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    return Scaffold(
-      appBar: StockAppBarView(
-        tabController: widget.tabScrollController.tabController,
-        onTabTap: widget.tabScrollController.scrollTo,
+    return Selector<StockProvider, ({bool hasError, bool isLoading})>(
+      selector: (_, p) => (
+        hasError: p.state.hasError,
+        isLoading: p.state.isLoading,
       ),
-      body: ListView(
-        key: widget.tabScrollController.viewportKey,
-        controller: widget.tabScrollController.scrollController,
-        children: [
-          StockPriceView(key: widget.tabScrollController.keys[0]),
-          const Divider(),
-          StockSummaryView(key: widget.tabScrollController.keys[1]),
-          const Divider(),
-          StockInputView(key: widget.tabScrollController.keys[2]),
-          const Divider(),
-          StockExpansionView(key: widget.tabScrollController.keys[3]),
-          const Divider(),
-          StockEtcView(key: widget.tabScrollController.keys[4]),
-        ],
-      ),
+      builder: (context, state, _) {
+        if (state.hasError) {
+          return const Scaffold(
+            body: Center(child: Text('종목 정보를 불러오지 못했습니다.')),
+          );
+        }
+        if (state.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return Scaffold(
+          appBar: StockAppBarView(
+            tabController: widget.tabScrollController.tabController,
+            onTabTap: widget.tabScrollController.scrollTo,
+          ),
+          body: ListView(
+            key: widget.tabScrollController.viewportKey,
+            controller: widget.tabScrollController.scrollController,
+            children: [
+              StockPriceView(key: widget.tabScrollController.keys[0]),
+              const Divider(),
+              StockSummaryView(key: widget.tabScrollController.keys[1]),
+              const Divider(),
+              StockInputView(key: widget.tabScrollController.keys[2]),
+              const Divider(),
+              StockExpansionView(key: widget.tabScrollController.keys[3]),
+              const Divider(),
+              StockEtcView(key: widget.tabScrollController.keys[4]),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -109,97 +112,95 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize =>
       const Size.fromHeight(kToolbarHeight + kTextTabBarHeight);
 
-  Future<void> _onWatchlistToggled(
-    BuildContext context,
-    String stockCode,
-    bool isInWatchlist,
-  ) async {
-    final provider = context.read<StockProvider>();
-    if (isInWatchlist) {
-      await provider.onFavoriteToggled(WatchlistItem(stockCode: stockCode));
-      return;
-    }
-    if (!context.mounted) return;
-    final result = await showDialog<({int targetPrice, AlertType alertType})>(
-      context: context,
-      builder: (_) => const _WatchlistDialog(),
-    );
-    if (result == null) return;
-    await provider.onFavoriteToggled(
-      WatchlistItem(
-        stockCode: stockCode,
-        targetPrice: result.targetPrice,
-        alertType: result.alertType,
-        createdAt: DateTime.now(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final stock = context
-        .select<StockProvider, ({String name, String code, String logoUrl})>(
-          (p) => (
-            name: p.state.stockOrDefault.name,
-            code: p.state.stockOrDefault.code,
-            logoUrl: p.state.stockOrDefault.logoUrl,
-          ),
-        );
-    final isInWatchlist = context.select<StockProvider, bool>(
-      (p) => p.state.isInWatchlist,
-    );
-    final tabViewTitles = StockPage.tabViewTitles;
-    final textTheme = Theme.of(context).textTheme;
     return AppBar(
-      title: Row(
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.blue,
-            foregroundImage: stock.logoUrl.isNotEmpty
-                ? NetworkImage(stock.logoUrl)
-                : null,
-            onForegroundImageError: stock.logoUrl.isNotEmpty
-                ? (_, _) {}
-                : null,
-            child: Text(
-              stock.name.isNotEmpty ? stock.name[0] : '',
-              style: textTheme.labelMedium?.copyWith(color: Colors.white),
+      title: Selector<StockProvider,
+          ({String name, String code, String logoUrl})>(
+        selector: (_, p) => (
+          name: p.state.stockOrDefault.name,
+          code: p.state.stockOrDefault.code,
+          logoUrl: p.state.stockOrDefault.logoUrl,
+        ),
+        builder: (context, stock, _) => Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.blue,
+              foregroundImage: stock.logoUrl.isNotEmpty
+                  ? NetworkImage(stock.logoUrl)
+                  : null,
+              onForegroundImageError: stock.logoUrl.isNotEmpty
+                  ? (_, _) {}
+                  : null,
+              child: Text(
+                stock.name.isNotEmpty ? stock.name[0] : '',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: Colors.white),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                stock.name,
-                style: textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  stock.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              Text(
-                stock.code,
-                style: textTheme.bodySmall?.copyWith(color: Colors.grey),
-              ),
-            ],
-          ),
-        ],
+                Text(
+                  stock.code,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.grey),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
       actions: [
-        IconButton(
-          icon: Icon(
-            isInWatchlist ? Icons.favorite : Icons.favorite_border,
-            color: isInWatchlist ? Colors.red : null,
+        Selector<StockProvider, ({bool isInWatchlist, String code})>(
+          selector: (_, p) => (
+            isInWatchlist: p.state.isInWatchlist,
+            code: p.state.stockOrDefault.code,
           ),
-          onPressed: () =>
-              _onWatchlistToggled(context, stock.code, isInWatchlist),
+          builder: (context, data, _) => IconButton(
+            icon: Icon(
+              data.isInWatchlist ? Icons.favorite : Icons.favorite_border,
+              color: data.isInWatchlist ? Colors.red : null,
+            ),
+            onPressed: () async {
+              final provider = context.read<StockProvider>();
+              final needsDialog =
+                  await provider.onFavoriteToggled(data.code);
+              if (!needsDialog || !context.mounted) return;
+              final result =
+                  await showDialog<({int targetPrice, AlertType alertType})>(
+                context: context,
+                builder: (_) => const _WatchlistDialog(),
+              );
+              if (result == null) return;
+              await provider.onWatchlistAdded(
+                stockCode: data.code,
+                targetPrice: result.targetPrice,
+                alertType: result.alertType,
+              );
+            },
+          ),
         ),
       ],
       bottom: TabBar(
         controller: tabController,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
-        tabs: tabViewTitles.map((title) => Tab(text: title)).toList(),
+        tabs: StockPage.tabViewTitles
+            .map((title) => Tab(text: title))
+            .toList(),
         onTap: onTabTap,
       ),
     );
@@ -211,80 +212,86 @@ class StockPriceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stock = context
-        .select<
-          StockProvider,
-          ({int currentPrice, double changeRate, List<int> priceHistory})
-        >(
-          (p) => (
-            currentPrice: p.state.stockOrDefault.currentPrice,
-            changeRate: p.state.stockOrDefault.changeRate,
-            priceHistory: p.state.stockOrDefault.priceHistory,
-          ),
-        );
-    final textTheme = Theme.of(context).textTheme;
-    final spots = stock.priceHistory
-        .asMap()
-        .entries
-        .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
-        .toList();
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('가격', style: textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+    return Selector<StockProvider,
+        ({int currentPrice, double changeRate, List<int> priceHistory})>(
+      selector: (_, p) => (
+        currentPrice: p.state.stockOrDefault.currentPrice,
+        changeRate: p.state.stockOrDefault.changeRate,
+        priceHistory: p.state.stockOrDefault.priceHistory,
+      ),
+      builder: (context, stock, _) {
+        final spots = stock.priceHistory
+            .asMap()
+            .entries
+            .map((e) => FlSpot(e.key.toDouble(), e.value.toDouble()))
+            .toList();
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _formatPrice(stock.currentPrice),
-                style: textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                '가격',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(width: 4),
-              Text(
-                '원',
-                style: textTheme.bodyLarge?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _formatChangeRate(stock.changeRate),
-                style: textTheme.bodyLarge?.copyWith(
-                  color: _changeRateColor(stock.changeRate),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: _changeRateColor(stock.changeRate),
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: _changeRateColor(stock.changeRate).withAlpha(30),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    _formatPrice(stock.currentPrice),
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '원',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(color: Colors.grey),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _formatChangeRate(stock.changeRate),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: _changeRateColor(stock.changeRate),
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 200,
+                child: LineChart(
+                  LineChartData(
+                    gridData: const FlGridData(show: false),
+                    titlesData: const FlTitlesData(show: false),
+                    borderData: FlBorderData(show: false),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        color: _changeRateColor(stock.changeRate),
+                        barWidth: 2,
+                        dotData: const FlDotData(show: false),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: _changeRateColor(stock.changeRate)
+                              .withAlpha(30),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -312,13 +319,12 @@ class StockSummaryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('요약', style: textTheme.titleMedium),
+          Text('요약', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           const StockSummaryInfoView(label: '시가총액', value: '432조 원'),
           const StockSummaryInfoView(label: 'PER', value: '12.5'),
@@ -339,7 +345,6 @@ class StockSummaryInfoView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -347,11 +352,17 @@ class StockSummaryInfoView extends StatelessWidget {
         children: [
           Text(
             label,
-            style: textTheme.bodyMedium?.copyWith(color: Colors.grey),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Colors.grey),
           ),
           Text(
             value,
-            style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),

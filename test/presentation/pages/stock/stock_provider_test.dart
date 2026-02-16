@@ -147,26 +147,19 @@ void main() {
     });
   });
 
-  group('onFavoriteToggled', () {
-    test('관심종목에 없는 항목은 추가해야 한다', () async {
+  group('onWatchlistAdded', () {
+    test('관심종목에 추가해야 한다', () async {
       final mockStockRepository = _MockStockRepository();
       final mockWatchlistRepository = _MockWatchlistRepository();
       final mockToggleWatchlistUseCase = _MockToggleWatchlistUseCase();
       final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
 
-      const testStock = Stock(
-        code: '005930',
-        name: '삼성전자',
-        priceHistory: [72500],
-      );
-
-      const testItem = WatchlistItem(
-        stockCode: '005930',
-        targetPrice: 80000,
-      );
-
       when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => testStock,
+        (_) async => const Stock(
+          code: '005930',
+          name: '삼성전자',
+          priceHistory: [72500],
+        ),
       );
       when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
         (_) async => [],
@@ -190,29 +183,29 @@ void main() {
       );
 
       await provider.onInitialized('005930');
-      await provider.onFavoriteToggled(testItem);
+      await provider.onWatchlistAdded(
+        stockCode: '005930',
+        targetPrice: 80000,
+        alertType: AlertType.both,
+      );
 
       verify(
         () => mockToggleWatchlistUseCase.call(
-          item: testItem,
+          item: any(named: 'item'),
           isInWatchlist: false,
         ),
       ).called(1);
 
       provider.dispose();
     });
+  });
 
-    test('관심종목에 있는 항목은 제거해야 한다', () async {
+  group('onFavoriteToggled', () {
+    test('관심종목에 이미 있으면 제거하고 false를 반환해야 한다', () async {
       final mockStockRepository = _MockStockRepository();
       final mockWatchlistRepository = _MockWatchlistRepository();
       final mockToggleWatchlistUseCase = _MockToggleWatchlistUseCase();
       final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
-
-      const testStock = Stock(
-        code: '005930',
-        name: '삼성전자',
-        priceHistory: [72500],
-      );
 
       const testItem = WatchlistItem(
         stockCode: '005930',
@@ -220,7 +213,11 @@ void main() {
       );
 
       when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => testStock,
+        (_) async => const Stock(
+          code: '005930',
+          name: '삼성전자',
+          priceHistory: [72500],
+        ),
       );
       when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
         (_) async => [testItem],
@@ -244,14 +241,57 @@ void main() {
       );
 
       await provider.onInitialized('005930');
-      await provider.onFavoriteToggled(testItem);
+      final result = await provider.onFavoriteToggled('005930');
 
+      expect(result, false);
       verify(
         () => mockToggleWatchlistUseCase.call(
-          item: testItem,
+          item: any(named: 'item'),
           isInWatchlist: true,
         ),
       ).called(1);
+
+      provider.dispose();
+    });
+
+    test('관심종목에 없으면 true를 반환해야 한다', () async {
+      final mockStockRepository = _MockStockRepository();
+      final mockWatchlistRepository = _MockWatchlistRepository();
+      final mockToggleWatchlistUseCase = _MockToggleWatchlistUseCase();
+      final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
+
+      when(() => mockStockRepository.getStock(any())).thenAnswer(
+        (_) async => const Stock(
+          code: '005930',
+          name: '삼성전자',
+          priceHistory: [72500],
+        ),
+      );
+      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
+        (_) async => [],
+      );
+      when(() => mockStockRepository.connect()).thenAnswer((_) async {});
+      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
+        (_) => const Stream.empty(),
+      );
+
+      final provider = StockProvider(
+        stockRepository: mockStockRepository,
+        watchlistRepository: mockWatchlistRepository,
+        toggleWatchlistUseCase: mockToggleWatchlistUseCase,
+        checkTargetPriceUseCase: mockCheckTargetPriceUseCase,
+      );
+
+      await provider.onInitialized('005930');
+      final result = await provider.onFavoriteToggled('005930');
+
+      expect(result, true);
+      verifyNever(
+        () => mockToggleWatchlistUseCase.call(
+          item: any(named: 'item'),
+          isInWatchlist: any(named: 'isInWatchlist'),
+        ),
+      );
 
       provider.dispose();
     });
