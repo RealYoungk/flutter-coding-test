@@ -14,9 +14,9 @@ class StockPriceView extends StatelessWidget {
       ({int currentPrice, double changeRate, List<int> priceHistory})
     >(
       selector: (_, p) => (
-        currentPrice: p.state.stockOrDefault.currentPrice,
-        changeRate: p.state.stockOrDefault.changeRate,
-        priceHistory: p.state.stockOrDefault.priceHistory,
+        currentPrice: p.state.stock.currentPrice,
+        changeRate: p.state.stock.changeRate,
+        priceHistory: p.state.stock.priceHistory,
       ),
       builder: (context, stock, _) {
         final spots = stock.priceHistory

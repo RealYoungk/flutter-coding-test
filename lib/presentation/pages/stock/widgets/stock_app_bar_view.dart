@@ -25,9 +25,9 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
       title:
           Selector<StockProvider, ({String name, String code, String logoUrl})>(
             selector: (_, p) => (
-              name: p.state.stockOrDefault.name,
-              code: p.state.stockOrDefault.code,
-              logoUrl: p.state.stockOrDefault.logoUrl,
+              name: p.state.stock.name,
+              code: p.state.stock.code,
+              logoUrl: p.state.stock.logoUrl,
             ),
             builder: (context, stock, _) => Row(
               children: [
@@ -72,7 +72,7 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
         Selector<StockProvider, ({bool isInWatchlist, String code})>(
           selector: (_, p) => (
             isInWatchlist: p.state.isInWatchlist,
-            code: p.state.stockOrDefault.code,
+            code: p.state.stock.code,
           ),
           builder: (context, data, _) => IconButton(
             icon: Icon(

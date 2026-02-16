@@ -38,7 +38,7 @@ void main() {
       );
 
       expect(provider.state.isLoading, true);
-      expect(provider.state.stock, null);
+      expect(provider.state.stock, const Stock());
 
       provider.dispose();
     });
@@ -58,16 +58,16 @@ void main() {
         changeRate: 1.25,
       );
 
-      when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => testStock,
-      );
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [],
-      );
+      when(
+        () => mockStockRepository.getStock(any()),
+      ).thenAnswer((_) async => testStock);
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => []);
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
-        (_) => const Stream.empty(),
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any()),
+      ).thenAnswer((_) => const Stream.empty());
 
       final provider = StockProvider(
         stockRepository: mockStockRepository,
@@ -90,9 +90,9 @@ void main() {
       final mockToggleWatchlistUseCase = _MockToggleWatchlistUseCase();
       final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
 
-      when(() => mockStockRepository.getStock(any())).thenThrow(
-        Exception('Network error'),
-      );
+      when(
+        () => mockStockRepository.getStock(any()),
+      ).thenThrow(Exception('Network error'));
 
       final provider = StockProvider(
         stockRepository: mockStockRepository,
@@ -121,16 +121,16 @@ void main() {
         priceHistory: [72500],
       );
 
-      when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => testStock,
-      );
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [],
-      );
+      when(
+        () => mockStockRepository.getStock(any()),
+      ).thenAnswer((_) async => testStock);
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => []);
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
-        (_) => const Stream.empty(),
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any()),
+      ).thenAnswer((_) => const Stream.empty());
 
       final provider = StockProvider(
         stockRepository: mockStockRepository,
@@ -155,19 +155,16 @@ void main() {
       final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
 
       when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => const Stock(
-          code: '005930',
-          name: '삼성전자',
-          priceHistory: [72500],
-        ),
+        (_) async =>
+            const Stock(code: '005930', name: '삼성전자', priceHistory: [72500]),
       );
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [],
-      );
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => []);
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
-        (_) => const Stream.empty(),
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any()),
+      ).thenAnswer((_) => const Stream.empty());
       when(
         () => mockToggleWatchlistUseCase.call(
           item: any(named: 'item'),
@@ -207,25 +204,19 @@ void main() {
       final mockToggleWatchlistUseCase = _MockToggleWatchlistUseCase();
       final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
 
-      const testItem = WatchlistItem(
-        stockCode: '005930',
-        targetPrice: 80000,
-      );
+      const testItem = WatchlistItem(stockCode: '005930', targetPrice: 80000);
 
       when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => const Stock(
-          code: '005930',
-          name: '삼성전자',
-          priceHistory: [72500],
-        ),
+        (_) async =>
+            const Stock(code: '005930', name: '삼성전자', priceHistory: [72500]),
       );
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [testItem],
-      );
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => [testItem]);
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
-        (_) => const Stream.empty(),
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any()),
+      ).thenAnswer((_) => const Stream.empty());
       when(
         () => mockToggleWatchlistUseCase.call(
           item: any(named: 'item'),
@@ -261,19 +252,16 @@ void main() {
       final mockCheckTargetPriceUseCase = _MockCheckTargetPriceUseCase();
 
       when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => const Stock(
-          code: '005930',
-          name: '삼성전자',
-          priceHistory: [72500],
-        ),
+        (_) async =>
+            const Stock(code: '005930', name: '삼성전자', priceHistory: [72500]),
       );
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [],
-      );
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => []);
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
-        (_) => const Stream.empty(),
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any()),
+      ).thenAnswer((_) => const Stream.empty());
 
       final provider = StockProvider(
         stockRepository: mockStockRepository,
@@ -364,16 +352,16 @@ void main() {
         changeRate: 1.50,
       );
 
-      when(() => mockStockRepository.getStock(any())).thenAnswer(
-        (_) async => testStock,
-      );
-      when(() => mockWatchlistRepository.getWatchlist()).thenAnswer(
-        (_) async => [],
-      );
+      when(
+        () => mockStockRepository.getStock(any()),
+      ).thenAnswer((_) async => testStock);
+      when(
+        () => mockWatchlistRepository.getWatchlist(),
+      ).thenAnswer((_) async => []);
       when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.stockTickStream(any())).thenAnswer(
-        (_) => tickController.stream,
-      );
+      when(
+        () => mockStockRepository.stockTickStream(any()),
+      ).thenAnswer((_) => tickController.stream);
       when(
         () => mockCheckTargetPriceUseCase.call(
           stockCode: any(named: 'stockCode'),
@@ -395,8 +383,8 @@ void main() {
       tickController.add(tickStock);
       await Future.delayed(const Duration(milliseconds: 100));
 
-      expect(provider.state.stock?.priceHistory, contains(73000));
-      expect(provider.state.stock?.changeRate, 1.50);
+      expect(provider.state.stock.priceHistory, contains(73000));
+      expect(provider.state.stock.changeRate, 1.50);
 
       await tickController.close();
       provider.dispose();

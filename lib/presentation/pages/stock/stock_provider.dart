@@ -83,9 +83,12 @@ class StockProvider extends ChangeNotifier {
 
   Future<void> _fetchStock(String code) async {
     try {
-      _state = _state.copyWith(stock: await _stockRepository.getStock(code));
+      _state = _state.copyWith(
+        stock: await _stockRepository.getStock(code),
+        isLoading: false,
+      );
     } catch (_) {
-      _state = _state.copyWith(stock: const Stock());
+      _state = _state.copyWith(stock: const Stock(), isLoading: false);
     }
     notifyListeners();
   }
@@ -100,31 +103,32 @@ class StockProvider extends ChangeNotifier {
   Future<void> _subscribeTick(String code) async {
     await _stockRepository.connect();
     _tickSubscription?.cancel();
-    _tickSubscription = _stockRepository.stockTickStream(code).listen(
-      (tick) async {
-        final stock = _state.stock;
-        if (stock == null) return;
-        final prevPrice = stock.currentPrice;
-        _state = _state.copyWith(
-          stock: stock.copyWith(
-            changeRate: tick.changeRate,
-            priceHistory: [...stock.priceHistory, tick.currentPrice],
-            updatedAt: tick.updatedAt,
-          ),
-          triggeredAlert: await _checkTargetPriceUseCase(
-            stockCode: stock.code,
-            prevPrice: prevPrice,
-            currentPrice: tick.currentPrice,
-          ),
+    _tickSubscription = _stockRepository
+        .stockTickStream(code)
+        .listen(
+          (tick) async {
+            final stock = _state.stock;
+            final prevPrice = stock.currentPrice;
+            _state = _state.copyWith(
+              stock: stock.copyWith(
+                changeRate: tick.changeRate,
+                priceHistory: [...stock.priceHistory, tick.currentPrice],
+                updatedAt: tick.updatedAt,
+              ),
+              triggeredAlert: await _checkTargetPriceUseCase(
+                stockCode: stock.code,
+                prevPrice: prevPrice,
+                currentPrice: tick.currentPrice,
+              ),
+            );
+            notifyListeners();
+          },
+          onError: (_) {
+            _tickSubscription?.cancel();
+            _stockRepository.disconnect();
+            _reconnectTick(code);
+          },
         );
-        notifyListeners();
-      },
-      onError: (_) {
-        _tickSubscription?.cancel();
-        _stockRepository.disconnect();
-        _reconnectTick(code);
-      },
-    );
   }
 
   void _reconnectTick(String code) {

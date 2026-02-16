@@ -9,14 +9,13 @@ abstract class StockState with _$StockState {
   const StockState._();
 
   const factory StockState({
-    Stock? stock,
+    @Default(Stock()) Stock stock,
+    @Default(true) bool isLoading,
     @Default([]) List<WatchlistItem> watchlist,
     ({WatchlistItem item, bool isUpper})? triggeredAlert,
   }) = _StockState;
 
-  bool get isLoading => stock == null;
-  bool get hasError => stock != null && stock!.code.isEmpty;
-  Stock get stockOrDefault => stock ?? const Stock();
+  bool get hasError => !isLoading && stock.code.isEmpty;
   bool get isInWatchlist =>
-      watchlist.any((item) => item.stockCode == stockOrDefault.code);
+      watchlist.any((item) => item.stockCode == stock.code);
 }
