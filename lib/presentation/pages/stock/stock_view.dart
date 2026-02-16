@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_coding_test/core/extensions/number_format_extension.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_page.dart';
@@ -32,10 +33,8 @@ class _StockViewState extends State<StockView> {
   @override
   Widget build(BuildContext context) {
     return Selector<StockProvider, ({bool hasError, bool isLoading})>(
-      selector: (_, p) => (
-        hasError: p.state.hasError,
-        isLoading: p.state.isLoading,
-      ),
+      selector: (_, p) =>
+          (hasError: p.state.hasError, isLoading: p.state.isLoading),
       builder: (context, state, _) {
         if (state.hasError) {
           return const Scaffold(
@@ -115,54 +114,52 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Selector<StockProvider,
-          ({String name, String code, String logoUrl})>(
-        selector: (_, p) => (
-          name: p.state.stockOrDefault.name,
-          code: p.state.stockOrDefault.code,
-          logoUrl: p.state.stockOrDefault.logoUrl,
-        ),
-        builder: (context, stock, _) => Row(
-          children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue,
-              foregroundImage: stock.logoUrl.isNotEmpty
-                  ? NetworkImage(stock.logoUrl)
-                  : null,
-              onForegroundImageError: stock.logoUrl.isNotEmpty
-                  ? (_, _) {}
-                  : null,
-              child: Text(
-                stock.name.isNotEmpty ? stock.name[0] : '',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(color: Colors.white),
-              ),
+      title:
+          Selector<StockProvider, ({String name, String code, String logoUrl})>(
+            selector: (_, p) => (
+              name: p.state.stockOrDefault.name,
+              code: p.state.stockOrDefault.code,
+              logoUrl: p.state.stockOrDefault.logoUrl,
             ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            builder: (context, stock, _) => Row(
               children: [
-                Text(
-                  stock.name,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.blue,
+                  foregroundImage: stock.logoUrl.isNotEmpty
+                      ? NetworkImage(stock.logoUrl)
+                      : null,
+                  onForegroundImageError: stock.logoUrl.isNotEmpty
+                      ? (_, _) {}
+                      : null,
+                  child: Text(
+                    stock.name.isNotEmpty ? stock.name[0] : '',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelMedium?.copyWith(color: Colors.white),
                   ),
                 ),
-                Text(
-                  stock.code,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Colors.grey),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stock.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      stock.code,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
       actions: [
         Selector<StockProvider, ({bool isInWatchlist, String code})>(
           selector: (_, p) => (
@@ -176,14 +173,13 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
             ),
             onPressed: () async {
               final provider = context.read<StockProvider>();
-              final needsDialog =
-                  await provider.onFavoriteToggled(data.code);
+              final needsDialog = await provider.onFavoriteToggled(data.code);
               if (!needsDialog || !context.mounted) return;
               final result =
                   await showDialog<({int targetPrice, AlertType alertType})>(
-                context: context,
-                builder: (_) => const _WatchlistDialog(),
-              );
+                    context: context,
+                    builder: (_) => const _WatchlistDialog(),
+                  );
               if (result == null) return;
               await provider.onWatchlistAdded(
                 stockCode: data.code,
@@ -198,9 +194,7 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
         controller: tabController,
         isScrollable: true,
         tabAlignment: TabAlignment.start,
-        tabs: StockPage.tabViewTitles
-            .map((title) => Tab(text: title))
-            .toList(),
+        tabs: StockPage.tabViewTitles.map((title) => Tab(text: title)).toList(),
         onTap: onTabTap,
       ),
     );
@@ -212,8 +206,10 @@ class StockPriceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<StockProvider,
-        ({int currentPrice, double changeRate, List<int> priceHistory})>(
+    return Selector<
+      StockProvider,
+      ({int currentPrice, double changeRate, List<int> priceHistory})
+    >(
       selector: (_, p) => (
         currentPrice: p.state.stockOrDefault.currentPrice,
         changeRate: p.state.stockOrDefault.changeRate,
@@ -230,33 +226,28 @@ class StockPriceView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '가격',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('가격', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
                   Text(
-                    _formatPrice(stock.currentPrice),
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    stock.currentPrice.formattedPrice,
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '원',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.copyWith(color: Colors.grey),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    _formatChangeRate(stock.changeRate),
+                    stock.changeRate.formattedChangeRate,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: _changeRateColor(stock.changeRate),
                     ),
@@ -280,8 +271,9 @@ class StockPriceView extends StatelessWidget {
                         dotData: const FlDotData(show: false),
                         belowBarData: BarAreaData(
                           show: true,
-                          color: _changeRateColor(stock.changeRate)
-                              .withAlpha(30),
+                          color: _changeRateColor(
+                            stock.changeRate,
+                          ).withAlpha(30),
                         ),
                       ),
                     ],
@@ -293,18 +285,6 @@ class StockPriceView extends StatelessWidget {
         );
       },
     );
-  }
-
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (match) => '${match[1]},',
-    );
-  }
-
-  String _formatChangeRate(double rate) {
-    final sign = rate >= 0 ? '+' : '';
-    return '$sign${rate.toStringAsFixed(2)}%';
   }
 
   Color _changeRateColor(double rate) {
@@ -338,7 +318,11 @@ class StockSummaryView extends StatelessWidget {
 }
 
 class StockSummaryInfoView extends StatelessWidget {
-  const StockSummaryInfoView({super.key, required this.label, required this.value});
+  const StockSummaryInfoView({
+    super.key,
+    required this.label,
+    required this.value,
+  });
 
   final String label;
   final String value;
@@ -352,17 +336,15 @@ class StockSummaryInfoView extends StatelessWidget {
         children: [
           Text(
             label,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Colors.grey),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
           ),
           Text(
             value,
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w500),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
