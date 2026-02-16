@@ -23,13 +23,43 @@ class StockPage extends HookWidget {
       tabViewCount: tabViewTitles.length,
     );
 
-    return ChangeNotifierProvider(
-      create: (_) => StockProvider(
+    final provider = useMemoized(
+      () => StockProvider(
         stockRepository: getIt<StockRepository>(),
         watchlistRepository: getIt<WatchlistRepository>(),
         toggleWatchlistUseCase: getIt<ToggleWatchlistUseCase>(),
         checkTargetPriceUseCase: getIt<CheckTargetPriceUseCase>(),
       )..onInitialized(stockCode),
+    );
+
+    useEffect(() => provider.dispose, [provider]);
+
+    useEffect(() {
+      void onAlert() {
+        final alert = provider.state.triggeredAlert;
+        if (alert == null) return;
+        provider.clearAlert();
+        final direction = alert.isUpper ? '상한 돌파' : '하한 돌파';
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  '${alert.item.stockCode} 목표가 ${alert.item.targetPrice}원 $direction',
+                ),
+              ),
+            );
+        });
+      }
+
+      provider.addListener(onAlert);
+      return () => provider.removeListener(onAlert);
+    }, [provider]);
+
+    return ChangeNotifierProvider.value(
+      value: provider,
       child: StockView(tabScrollController: tabScrollController),
     );
   }
