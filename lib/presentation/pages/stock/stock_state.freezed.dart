@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$StockState {
 
- Stock? get stock; List<WatchlistItem> get watchlist; ({WatchlistItem item, bool isUpper})? get triggeredAlert; bool get hasError;
+ Stock? get stock; List<WatchlistItem> get watchlist; ({WatchlistItem item, bool isUpper})? get triggeredAlert;
 /// Create a copy of StockState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $StockStateCopyWith<StockState> get copyWith => _$StockStateCopyWithImpl<StockSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StockState&&(identical(other.stock, stock) || other.stock == stock)&&const DeepCollectionEquality().equals(other.watchlist, watchlist)&&(identical(other.triggeredAlert, triggeredAlert) || other.triggeredAlert == triggeredAlert)&&(identical(other.hasError, hasError) || other.hasError == hasError));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is StockState&&(identical(other.stock, stock) || other.stock == stock)&&const DeepCollectionEquality().equals(other.watchlist, watchlist)&&(identical(other.triggeredAlert, triggeredAlert) || other.triggeredAlert == triggeredAlert));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,stock,const DeepCollectionEquality().hash(watchlist),triggeredAlert,hasError);
+int get hashCode => Object.hash(runtimeType,stock,const DeepCollectionEquality().hash(watchlist),triggeredAlert);
 
 @override
 String toString() {
-  return 'StockState(stock: $stock, watchlist: $watchlist, triggeredAlert: $triggeredAlert, hasError: $hasError)';
+  return 'StockState(stock: $stock, watchlist: $watchlist, triggeredAlert: $triggeredAlert)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $StockStateCopyWith<$Res>  {
   factory $StockStateCopyWith(StockState value, $Res Function(StockState) _then) = _$StockStateCopyWithImpl;
 @useResult
 $Res call({
- Stock? stock, List<WatchlistItem> watchlist, ({WatchlistItem item, bool isUpper})? triggeredAlert, bool hasError
+ Stock? stock, List<WatchlistItem> watchlist, ({WatchlistItem item, bool isUpper})? triggeredAlert
 });
 
 
@@ -62,13 +62,12 @@ class _$StockStateCopyWithImpl<$Res>
 
 /// Create a copy of StockState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? stock = freezed,Object? watchlist = null,Object? triggeredAlert = freezed,Object? hasError = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? stock = freezed,Object? watchlist = null,Object? triggeredAlert = freezed,}) {
   return _then(_self.copyWith(
 stock: freezed == stock ? _self.stock : stock // ignore: cast_nullable_to_non_nullable
 as Stock?,watchlist: null == watchlist ? _self.watchlist : watchlist // ignore: cast_nullable_to_non_nullable
 as List<WatchlistItem>,triggeredAlert: freezed == triggeredAlert ? _self.triggeredAlert : triggeredAlert // ignore: cast_nullable_to_non_nullable
-as ({WatchlistItem item, bool isUpper})?,hasError: null == hasError ? _self.hasError : hasError // ignore: cast_nullable_to_non_nullable
-as bool,
+as ({WatchlistItem item, bool isUpper})?,
   ));
 }
 /// Create a copy of StockState
@@ -165,10 +164,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Stock? stock,  List<WatchlistItem> watchlist,  ({WatchlistItem item, bool isUpper})? triggeredAlert,  bool hasError)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Stock? stock,  List<WatchlistItem> watchlist,  ({WatchlistItem item, bool isUpper})? triggeredAlert)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _StockState() when $default != null:
-return $default(_that.stock,_that.watchlist,_that.triggeredAlert,_that.hasError);case _:
+return $default(_that.stock,_that.watchlist,_that.triggeredAlert);case _:
   return orElse();
 
 }
@@ -186,10 +185,10 @@ return $default(_that.stock,_that.watchlist,_that.triggeredAlert,_that.hasError)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Stock? stock,  List<WatchlistItem> watchlist,  ({WatchlistItem item, bool isUpper})? triggeredAlert,  bool hasError)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Stock? stock,  List<WatchlistItem> watchlist,  ({WatchlistItem item, bool isUpper})? triggeredAlert)  $default,) {final _that = this;
 switch (_that) {
 case _StockState():
-return $default(_that.stock,_that.watchlist,_that.triggeredAlert,_that.hasError);case _:
+return $default(_that.stock,_that.watchlist,_that.triggeredAlert);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +205,10 @@ return $default(_that.stock,_that.watchlist,_that.triggeredAlert,_that.hasError)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Stock? stock,  List<WatchlistItem> watchlist,  ({WatchlistItem item, bool isUpper})? triggeredAlert,  bool hasError)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Stock? stock,  List<WatchlistItem> watchlist,  ({WatchlistItem item, bool isUpper})? triggeredAlert)?  $default,) {final _that = this;
 switch (_that) {
 case _StockState() when $default != null:
-return $default(_that.stock,_that.watchlist,_that.triggeredAlert,_that.hasError);case _:
+return $default(_that.stock,_that.watchlist,_that.triggeredAlert);case _:
   return null;
 
 }
@@ -221,7 +220,7 @@ return $default(_that.stock,_that.watchlist,_that.triggeredAlert,_that.hasError)
 
 
 class _StockState extends StockState {
-  const _StockState({this.stock, final  List<WatchlistItem> watchlist = const [], this.triggeredAlert, this.hasError = false}): _watchlist = watchlist,super._();
+  const _StockState({this.stock, final  List<WatchlistItem> watchlist = const [], this.triggeredAlert}): _watchlist = watchlist,super._();
   
 
 @override final  Stock? stock;
@@ -233,7 +232,6 @@ class _StockState extends StockState {
 }
 
 @override final  ({WatchlistItem item, bool isUpper})? triggeredAlert;
-@override@JsonKey() final  bool hasError;
 
 /// Create a copy of StockState
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +243,16 @@ _$StockStateCopyWith<_StockState> get copyWith => __$StockStateCopyWithImpl<_Sto
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StockState&&(identical(other.stock, stock) || other.stock == stock)&&const DeepCollectionEquality().equals(other._watchlist, _watchlist)&&(identical(other.triggeredAlert, triggeredAlert) || other.triggeredAlert == triggeredAlert)&&(identical(other.hasError, hasError) || other.hasError == hasError));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StockState&&(identical(other.stock, stock) || other.stock == stock)&&const DeepCollectionEquality().equals(other._watchlist, _watchlist)&&(identical(other.triggeredAlert, triggeredAlert) || other.triggeredAlert == triggeredAlert));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,stock,const DeepCollectionEquality().hash(_watchlist),triggeredAlert,hasError);
+int get hashCode => Object.hash(runtimeType,stock,const DeepCollectionEquality().hash(_watchlist),triggeredAlert);
 
 @override
 String toString() {
-  return 'StockState(stock: $stock, watchlist: $watchlist, triggeredAlert: $triggeredAlert, hasError: $hasError)';
+  return 'StockState(stock: $stock, watchlist: $watchlist, triggeredAlert: $triggeredAlert)';
 }
 
 
@@ -265,7 +263,7 @@ abstract mixin class _$StockStateCopyWith<$Res> implements $StockStateCopyWith<$
   factory _$StockStateCopyWith(_StockState value, $Res Function(_StockState) _then) = __$StockStateCopyWithImpl;
 @override @useResult
 $Res call({
- Stock? stock, List<WatchlistItem> watchlist, ({WatchlistItem item, bool isUpper})? triggeredAlert, bool hasError
+ Stock? stock, List<WatchlistItem> watchlist, ({WatchlistItem item, bool isUpper})? triggeredAlert
 });
 
 
@@ -282,13 +280,12 @@ class __$StockStateCopyWithImpl<$Res>
 
 /// Create a copy of StockState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? stock = freezed,Object? watchlist = null,Object? triggeredAlert = freezed,Object? hasError = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? stock = freezed,Object? watchlist = null,Object? triggeredAlert = freezed,}) {
   return _then(_StockState(
 stock: freezed == stock ? _self.stock : stock // ignore: cast_nullable_to_non_nullable
 as Stock?,watchlist: null == watchlist ? _self._watchlist : watchlist // ignore: cast_nullable_to_non_nullable
 as List<WatchlistItem>,triggeredAlert: freezed == triggeredAlert ? _self.triggeredAlert : triggeredAlert // ignore: cast_nullable_to_non_nullable
-as ({WatchlistItem item, bool isUpper})?,hasError: null == hasError ? _self.hasError : hasError // ignore: cast_nullable_to_non_nullable
-as bool,
+as ({WatchlistItem item, bool isUpper})?,
   ));
 }
 

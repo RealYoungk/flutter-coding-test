@@ -7,13 +7,32 @@ Flutter 기반의 Clean Architecture 설계로 구현된 실시간 주식 가격
 ## 1. 실행 방법
 
 ### 사전 준비 사항
-- Flutter SDK 3.41.1 이상
-- Dart 3.11.0 이상
+
+#### Flutter SDK 설치
+
+Flutter가 설치되어 있지 않다면 공식 문서를 참고하여 설치합니다:
+- https://docs.flutter.dev/get-started/install
+
+설치 후 환경이 정상인지 확인합니다:
+```bash
+flutter doctor
+```
+
+#### Flutter 버전 확인
+
+이 프로젝트는 **Dart SDK 3.8.1 이상**이 필요합니다. 현재 버전이 낮다면 업그레이드합니다:
+```bash
+# 현재 버전 확인
+flutter --version
+
+# 최신 stable 버전으로 업그레이드
+flutter upgrade
+```
 
 ### 설치 및 실행
 
 ```bash
-# 1. 의존성 설치
+# 1. 의존성 설치 (build_runner 포함 자동 설치)
 flutter pub get
 
 # 2. 코드 생성 (freezed, json_serializable, hive)
@@ -22,9 +41,11 @@ dart run build_runner build --delete-conflicting-outputs
 # 3. 앱 실행
 flutter run
 
-# 4. 테스트 실행 (88개 단위 테스트)
+# 4. 테스트 실행 (97개 단위 테스트)
 flutter test
 ```
+
+> **참고:** `build_runner`는 dev_dependencies에 포함되어 있어 `flutter pub get`으로 자동 설치됩니다. 별도 글로벌 설치가 필요하지 않습니다.
 
 ### 코드 생성 (빌드러너) 세부사항
 이 프로젝트는 다음 코드 생성 도구를 사용합니다:
@@ -113,17 +134,64 @@ lib/
 - `StockState`: 불변 상태 (freezed)
 - `StockView`: 주요 UI 컴포넌트들
 
-### 의존성 흐름 (역전 원칙)
+### 계층 간 의존성
 
-```
-presentation → data → domain
-     ↓          ↓        ↓
-StockProvider  Impl   Repository(인터페이스)
+```mermaid
+graph TB
+    subgraph Presentation["Presentation Layer"]
+        View["StockView"]
+        Provider["StockProvider"]
+        State["StockState"]
+    end
+
+    subgraph Domain["Domain Layer"]
+        Entity["Stock / WatchlistItem"]
+        RepoIF["StockRepository\n WatchlistRepository\n(interface)"]
+        UseCase["ToggleWatchlistUseCase\nCheckTargetPriceUseCase"]
+    end
+
+    subgraph Data["Data Layer"]
+        RepoImpl["StockRepositoryImpl\nWatchlistRepositoryImpl"]
+        DS["StockDataSourceEzar\nStockTickDataSourceEzar\nWatchlistDataSourceLocal"]
+    end
+
+    View --> Provider
+    Provider --> UseCase
+    Provider --> RepoIF
+    UseCase --> RepoIF
+    RepoImpl -.->|implements| RepoIF
+    RepoImpl --> DS
+
+    style Presentation fill:#e1f5fe
+    style Domain fill:#fff3e0
+    style Data fill:#e8f5e9
 ```
 
-- Domain은 Data/Presentation에 의존하지 않음 (의존성 역전)
-- Data는 Domain의 Repository 인터페이스를 구현
-- Presentation은 Domain의 Repository를 통해 접근
+- **Domain**은 다른 계층에 의존하지 않음 (의존성 역전 원칙)
+- **Data**는 Domain의 Repository 인터페이스를 구현 (점선)
+- **Presentation**은 Domain의 인터페이스만 참조
+
+### 데이터 흐름
+
+```mermaid
+sequenceDiagram
+    participant V as StockView
+    participant P as StockProvider
+    participant R as StockRepositoryImpl
+    participant DS as StockTickDataSource
+
+    V->>P: onInitialized(code)
+    P->>R: getStock(code)
+    R-->>P: Stock
+    P->>R: connect() + stockTickStream(code)
+
+    loop 5초마다
+        DS->>R: StockTickMessage
+        R-->>P: Stock (tick)
+        P->>P: state.copyWith(stock: ...)
+        P-->>V: notifyListeners()
+    end
+```
 
 ### 상태 관리 방식
 
@@ -358,7 +426,7 @@ Stream<Stock> stockTickStream(String code) async* {
 
 ## 테스트
 
-이 프로젝트는 88개의 단위 테스트를 포함합니다.
+이 프로젝트는 97개의 단위 테스트를 포함합니다.
 
 **테스트 범위:**
 - Domain 엔티티 및 로직

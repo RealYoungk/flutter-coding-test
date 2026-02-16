@@ -62,7 +62,7 @@ class StockProvider extends ChangeNotifier {
     try {
       _state = _state.copyWith(stock: await _stockRepository.getStock(code));
     } catch (_) {
-      _state = _state.copyWith(hasError: true);
+      _state = _state.copyWith(stock: const Stock());
     }
     notifyListeners();
   }

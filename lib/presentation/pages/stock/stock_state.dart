@@ -12,10 +12,10 @@ abstract class StockState with _$StockState {
     Stock? stock,
     @Default([]) List<WatchlistItem> watchlist,
     ({WatchlistItem item, bool isUpper})? triggeredAlert,
-    @Default(false) bool hasError,
   }) = _StockState;
 
-  bool get isLoading => stock == null && !hasError;
+  bool get isLoading => stock == null;
+  bool get hasError => stock != null && stock!.code.isEmpty;
   Stock get stockOrDefault => stock ?? const Stock();
   bool get isInWatchlist =>
       watchlist.any((item) => item.stockCode == stockOrDefault.code);
