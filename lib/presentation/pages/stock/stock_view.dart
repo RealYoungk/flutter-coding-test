@@ -9,10 +9,28 @@ import 'package:flutter_coding_test/presentation/pages/stock/widgets/stock_price
 import 'package:flutter_coding_test/presentation/pages/stock/widgets/stock_summary_view.dart';
 import 'package:provider/provider.dart';
 
-class StockView extends StatelessWidget {
+class StockView extends StatefulWidget {
   const StockView({super.key, required this.tabScrollController});
 
   final TabScrollController tabScrollController;
+
+  @override
+  State<StockView> createState() => _StockViewState();
+}
+
+class _StockViewState extends State<StockView> {
+  StockProvider? _provider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = context.read<StockProvider>();
+    if (_provider != provider) {
+      _provider?.removeListener(_showAlertSnackBar);
+      _provider = provider;
+      provider.addListener(_showAlertSnackBar);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,26 +50,51 @@ class StockView extends StatelessWidget {
         }
         return Scaffold(
           appBar: StockAppBarView(
-            tabController: tabScrollController.tabController,
-            onTabTap: tabScrollController.scrollTo,
+            tabController: widget.tabScrollController.tabController,
+            onTabTap: widget.tabScrollController.scrollTo,
           ),
           body: ListView(
-            key: tabScrollController.viewportKey,
-            controller: tabScrollController.scrollController,
+            key: widget.tabScrollController.viewportKey,
+            controller: widget.tabScrollController.scrollController,
             children: [
-              StockPriceView(key: tabScrollController.keys[0]),
+              StockPriceView(key: widget.tabScrollController.keys[0]),
               const Divider(),
-              StockSummaryView(key: tabScrollController.keys[1]),
+              StockSummaryView(key: widget.tabScrollController.keys[1]),
               const Divider(),
-              StockInputView(key: tabScrollController.keys[2]),
+              StockInputView(key: widget.tabScrollController.keys[2]),
               const Divider(),
-              StockExpansionView(key: tabScrollController.keys[3]),
+              StockExpansionView(key: widget.tabScrollController.keys[3]),
               const Divider(),
-              StockEtcView(key: tabScrollController.keys[4]),
+              StockEtcView(key: widget.tabScrollController.keys[4]),
             ],
           ),
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _provider?.removeListener(_showAlertSnackBar);
+    super.dispose();
+  }
+
+  void _showAlertSnackBar() {
+    final alert = _provider?.state.triggeredAlert;
+    if (alert == null) return;
+    _provider?.clearAlert();
+    final direction = alert.isUpper ? '상한 돌파' : '하한 돌파';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              '${alert.item.stockCode} 목표가 ${alert.item.targetPrice}원 $direction',
+            ),
+          ),
+        );
+    });
   }
 }
