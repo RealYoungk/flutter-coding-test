@@ -41,7 +41,7 @@ dart run build_runner build --delete-conflicting-outputs
 # 3. 앱 실행
 flutter run
 
-# 4. 테스트 실행 (97개 단위 테스트)
+# 4. 테스트 실행 (123개 단위 테스트)
 flutter test
 ```
 
@@ -66,7 +66,8 @@ flutter test
 ```
 lib/
 ├── core/
-│   └── di/                    # 의존성 주입 컨테이너 (get_it)
+│   ├── di/                    # 의존성 주입 컨테이너 (get_it)
+│   └── extensions/            # 유틸리티 확장
 ├── domain/                    # 비즈니스 로직 계층
 │   ├── stock/
 │   │   ├── entities/          # Stock 엔티티
@@ -90,12 +91,22 @@ lib/
 │       └── watchlist_repository_impl.dart
 └── presentation/              # UI 계층
     ├── hooks/                 # 커스텀 Flutter Hooks
-    │   └── use_tab_scroll_controller.dart
+    │   ├── use_tab_scroll_controller.dart
+    │   └── use_listenable_effect.dart
     └── pages/stock/
-        ├── stock_page.dart            # 페이지 엔트리포인트
-        ├── stock_view.dart            # 주요 UI 컴포넌트
+        ├── stock_page.dart            # 페이지 엔트리포인트 (HookWidget)
+        ├── stock_view.dart            # 주요 UI 컴포넌트 (StatelessWidget)
         ├── stock_provider.dart        # 상태 관리 (ChangeNotifier)
-        └── stock_state.dart           # 불변 상태 클래스 (freezed)
+        ├── stock_state.dart           # 불변 상태 클래스 (freezed)
+        └── widgets/                   # 섹션별 위젯
+            ├── stock_app_bar_view.dart
+            ├── stock_price_view.dart
+            ├── stock_summary_view.dart
+            ├── stock_summary_row_view.dart
+            ├── stock_input_view.dart
+            ├── stock_expansion_view.dart
+            ├── stock_etc_view.dart
+            └── stock_watchlist_dialog.dart
 ```
 
 ### 계층별 책임
@@ -130,11 +141,16 @@ lib/
 
 #### Presentation Layer (UI 계층)
 - Widget, 상태 관리, 사용자 인터랙션
+- `StockPage`: HookWidget, `ChangeNotifierProvider`로 Provider 생성 및 생명주기 관리
 - `StockProvider`: ChangeNotifier 기반 상태 관리
 - `StockState`: 불변 상태 (freezed)
-- `StockView`: 주요 UI 컴포넌트들
+- `StockView`: StatelessWidget, `Selector`로 선택적 rebuild
+- `useListenableEffect`: 범용 Listenable 변경 감지 훅
+- `useTabScrollController`: 탭-스크롤 동기화 훅
 
 ### 계층 간 의존성
+
+> 다이어그램이 렌더링되지 않는 환경에서는 [GitHub에서 보기](https://github.com/RealYoungk/flutter-coding-test#계층-간-의존성)를 참고하세요.
 
 ```mermaid
 graph TB
@@ -175,7 +191,7 @@ graph TB
 
 ```mermaid
 sequenceDiagram
-    participant V as StockView
+    participant V as StockPage
     participant P as StockProvider
     participant R as StockRepositoryImpl
     participant DS as StockTickDataSource
@@ -202,23 +218,23 @@ abstract class StockState with _$StockState {
   const StockState._();
 
   const factory StockState({
-    Stock? stock,
+    @Default(Stock()) Stock stock,
+    @Default(true) bool isLoading,
     @Default([]) List<WatchlistItem> watchlist,
     ({WatchlistItem item, bool isUpper})? triggeredAlert,
   }) = _StockState;
 
-  bool get isLoading => stock == null;
-  bool get hasError => stock != null && stock!.code.isEmpty;
-  Stock get stockOrDefault => stock ?? const Stock();
+  bool get hasError => !isLoading && stock.code.isEmpty;
   bool get isInWatchlist =>
-      watchlist.any((item) => item.stockCode == stockOrDefault.code);
+      watchlist.any((item) => item.stockCode == stock.code);
 }
 ```
 
 **StockProvider (상태 변경 통지)**
 - `ChangeNotifier` 상속으로 상태 변경 시 `notifyListeners()` 호출
-- `context.select()`로 필요한 상태만 구독 → 불필요한 rebuild 방지
-- 스트림 구독/해제 및 리소스 정리는 `dispose()`에서 처리
+- `Selector` 위젯으로 필요한 상태만 구독 → 불필요한 rebuild 방지
+- 에러 발생 시 `rethrow` / `Error.throwWithStackTrace`로 글로벌 로깅 지원
+- 스트림 에러 시 자동 재연결 (`_reconnectTick`)
 
 ---
 
@@ -426,15 +442,18 @@ Stream<Stock> stockTickStream(String code) async* {
 
 ## 테스트
 
-이 프로젝트는 97개의 단위 테스트를 포함합니다.
+이 프로젝트는 123개의 단위 테스트를 포함합니다.
 
 **테스트 범위:**
 - Domain 엔티티 및 로직
+- Domain UseCase (`ToggleWatchlistUseCase`, `CheckTargetPriceUseCase`)
 - Data 계층 (DataSource, Repository)
-- Presentation Widget (StockView)
+- Presentation Provider (`StockProvider`)
+- Presentation Widget (`StockView`)
+- 커스텀 Hooks (`useListenableEffect`)
 
 **모킹 도구:**
-- `mocktail`: Repository, DataSource 모킹
+- `mocktail`: Repository, DataSource, UseCase 모킹
 
 **실행:**
 ```bash
