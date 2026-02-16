@@ -33,10 +33,7 @@ class _StockWatchlistDialogState extends State<StockWatchlistDialog> {
           SegmentedButton<AlertType>(
             segments: AlertType.values
                 .map(
-                  (type) => ButtonSegment(
-                    value: type,
-                    label: Text(type.label),
-                  ),
+                  (type) => ButtonSegment(value: type, label: Text(type.label)),
                 )
                 .toList(),
             selected: {_alertType},

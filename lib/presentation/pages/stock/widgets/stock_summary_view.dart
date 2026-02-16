@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/widgets/stock_summary_row_view.dart';
 
 class StockSummaryView extends StatelessWidget {
   const StockSummaryView({super.key});
@@ -12,42 +13,11 @@ class StockSummaryView extends StatelessWidget {
         children: [
           Text('요약', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          const _SummaryInfoRow(label: '시가총액', value: '432조 원'),
-          const _SummaryInfoRow(label: 'PER', value: '12.5'),
-          const _SummaryInfoRow(label: 'PBR', value: '1.3'),
-          const _SummaryInfoRow(label: '52주 최고', value: '78,000원'),
-          const _SummaryInfoRow(label: '52주 최저', value: '59,000원'),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryInfoRow extends StatelessWidget {
-  const _SummaryInfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-          ),
-          Text(
-            value,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-          ),
+          const StockSummaryRowView(label: '시가총액', value: '432조 원'),
+          const StockSummaryRowView(label: 'PER', value: '12.5'),
+          const StockSummaryRowView(label: 'PBR', value: '1.3'),
+          const StockSummaryRowView(label: '52주 최고', value: '78,000원'),
+          const StockSummaryRowView(label: '52주 최저', value: '59,000원'),
         ],
       ),
     );

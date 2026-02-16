@@ -70,10 +70,8 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
           ),
       actions: [
         Selector<StockProvider, ({bool isInWatchlist, String code})>(
-          selector: (_, p) => (
-            isInWatchlist: p.state.isInWatchlist,
-            code: p.state.stock.code,
-          ),
+          selector: (_, p) =>
+              (isInWatchlist: p.state.isInWatchlist, code: p.state.stock.code),
           builder: (context, data, _) => IconButton(
             icon: Icon(
               data.isInWatchlist ? Icons.favorite : Icons.favorite_border,
