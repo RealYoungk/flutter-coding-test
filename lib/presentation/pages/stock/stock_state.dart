@@ -12,10 +12,30 @@ abstract class StockState with _$StockState {
     @Default(Stock()) Stock stock,
     @Default(true) bool isLoading,
     @Default([]) List<WatchlistItem> watchlist,
-    ({WatchlistItem item, bool isUpper})? triggeredAlert,
   }) = _StockState;
 
   bool get hasError => !isLoading && stock.code.isEmpty;
   bool get isInWatchlist =>
       watchlist.any((item) => item.stockCode == stock.code);
+
+  ({String stockCode, int targetPrice, bool isUpper})? get needsTargetPriceAlert {
+    final history = stock.priceHistory;
+    if (history.length < 2) return null;
+    final item = watchlist
+        .where((e) => e.stockCode == stock.code)
+        .firstOrNull;
+    if (item == null || item.targetPrice == null) return null;
+    final prevPrice = history[history.length - 2];
+    final currentPrice = history.last;
+    final targetPrice = item.targetPrice!;
+    final crossedUp = prevPrice < targetPrice && currentPrice >= targetPrice;
+    final crossedDown = prevPrice > targetPrice && currentPrice <= targetPrice;
+    final reached = switch (item.alertType) {
+      AlertType.upper => crossedUp,
+      AlertType.lower => crossedDown,
+      AlertType.both => crossedUp || crossedDown,
+    };
+    if (!reached) return null;
+    return (stockCode: item.stockCode, targetPrice: targetPrice, isUpper: crossedUp);
+  }
 }

@@ -1,63 +1,43 @@
+import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_coding_test/domain/stock/stock.dart';
-import 'package:flutter_coding_test/domain/usecases/check_target_price_use_case.dart';
-import 'package:flutter_coding_test/domain/usecases/toggle_watchlist_use_case.dart';
-import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
 import 'package:flutter_coding_test/presentation/hooks/use_tab_scroll_controller.dart';
-import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_bloc.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_event.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_state.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:provider/provider.dart';
 
-class _MockStockRepository extends Mock implements StockRepository {}
-
-class _MockWatchlistRepository extends Mock implements WatchlistRepository {}
+class MockStockBloc extends MockBloc<StockEvent, StockState>
+    implements StockBloc {}
 
 void main() {
   group('StockView', () {
-    late _MockStockRepository mockStockRepository;
-    late _MockWatchlistRepository mockWatchlistRepository;
+    late MockStockBloc mockBloc;
 
     setUp(() {
-      mockStockRepository = _MockStockRepository();
-      mockWatchlistRepository = _MockWatchlistRepository();
-
-      when(() => mockStockRepository.getStock(any<String>())).thenAnswer(
-        (_) async => const Stock(
-          code: '005930',
-          name: '삼성전자',
-          logoUrl: 'https://example.com/logo.png',
-          priceHistory: [72500],
-          changeRate: 1.25,
+      mockBloc = MockStockBloc();
+      when(() => mockBloc.state).thenReturn(
+        const StockState(
+          stock: Stock(
+            code: '005930',
+            name: '삼성전자',
+            logoUrl: 'https://example.com/logo.png',
+            priceHistory: [72500],
+            changeRate: 1.25,
+          ),
+          isLoading: false,
         ),
       );
-
-      when(() => mockStockRepository.connect()).thenAnswer((_) async {});
-      when(() => mockStockRepository.disconnect()).thenReturn(null);
-      when(
-        () => mockStockRepository.stockTickStream(any<String>()),
-      ).thenAnswer((_) => const Stream.empty());
-
-      when(
-        () => mockWatchlistRepository.getWatchlist(),
-      ).thenAnswer((_) async => []);
     });
 
     Future<void> pumpStockView(WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: ChangeNotifierProvider(
-            create: (_) => StockProvider(
-              stockRepository: mockStockRepository,
-              watchlistRepository: mockWatchlistRepository,
-              toggleWatchlistUseCase: ToggleWatchlistUseCase(
-                mockWatchlistRepository,
-              ),
-              checkTargetPriceUseCase: CheckTargetPriceUseCase(
-                mockWatchlistRepository,
-              ),
-            )..onInitialized('005930'),
+          home: BlocProvider<StockBloc>.value(
+            value: mockBloc,
             child: _TestStockView(),
           ),
         ),

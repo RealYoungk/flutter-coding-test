@@ -39,51 +39,37 @@
 └─────────────────────────────────────────────┘
 ```
 
-```mermaid
-graph TB
-    subgraph Presentation["Presentation Layer"]
-        direction LR
-        Page["Page<br/>(HookWidget)"]
-        Provider["Provider<br/>(ChangeNotifier)"]
-        State["State<br/>(Freezed)"]
-        View["View + Widgets<br/>(StatelessWidget)"]
-    end
+```
+┌─ Presentation ──────────────────────────────────────────────┐
+│                                                             │
+│  Page (HookWidget) ──▶ Bloc (Event → State)                 │
+│                            │          │                     │
+│                            │          ▼                     │
+│                            │     State (Freezed)            │
+│                            │          │                     │
+│                            │          ▼                     │
+│                            │   View + Widgets (Stateless)   │
+│                            │                                │
+└────────────────────────────┼────────────────────────────────┘
+                             │ 참조 (인터페이스만)
+┌─ Domain ───────────────────┼────────────────────────────────┐
+│                            ▼                                │
+│  UseCase ──────────▶ Repository (abstract interface)        │
+│                            ▲                                │
+│  Entity (Freezed)          │                                │
+│                            │                                │
+└────────────────────────────┼────────────────────────────────┘
+                             │ implements (구현)
+┌─ Data ─────────────────────┼────────────────────────────────┐
+│                            │                                │
+│  Repository Impl ──▶ DataSource ──▶ Model/DTO (Freezed+JSON)│
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 
-    subgraph Domain["Domain Layer"]
-        direction LR
-        Entity["Entity<br/>(Freezed)"]
-        RepoIF["Repository<br/>(abstract interface)"]
-        UseCase["UseCase"]
-    end
-
-    subgraph Data["Data Layer"]
-        direction LR
-        RepoImpl["Repository Impl"]
-        DS["DataSource"]
-        Model["Model / DTO<br/>(Freezed + JSON)"]
-    end
-
-    subgraph Core["Core"]
-        direction LR
-        DI["DI Container<br/>(GetIt)"]
-        Ext["Extensions"]
-    end
-
-    Page --> Provider
-    Provider --> UseCase
-    Provider --> RepoIF
-    UseCase --> RepoIF
-    RepoImpl -.->|implements| RepoIF
-    RepoImpl --> DS
-    DS --> Model
-    DI -.->|registers| RepoImpl
-    DI -.->|registers| DS
-    DI -.->|registers| UseCase
-
-    style Presentation fill:#e1f5fe,stroke:#0288d1
-    style Domain fill:#fff3e0,stroke:#f57c00
-    style Data fill:#e8f5e9,stroke:#388e3c
-    style Core fill:#f3e5f5,stroke:#7b1fa2
+┌─ Core ──────────────────────────────────────────────────────┐
+│  DI Container (GetIt)          Extensions                   │
+│  ···registers DataSource, Repository Impl, UseCase          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -116,7 +102,8 @@ lib/
     ├── hooks/                     #   커스텀 Flutter Hooks
     └── pages/{페이지명}/
         ├── {페이지명}_page.dart    #   진입점 (DI 주입, Hook 설정)
-        ├── {페이지명}_provider.dart #   상태 관리
+        ├── {페이지명}_bloc.dart    #   상태 관리 (Bloc)
+        ├── {페이지명}_event.dart   #   이벤트 정의
         ├── {페이지명}_state.dart   #   불변 상태 클래스
         ├── {페이지명}_view.dart    #   메인 UI
         └── widgets/               #   세부 위젯
@@ -124,15 +111,22 @@ lib/
 
 ### 의존성 규칙
 
-```mermaid
-graph LR
-    P["Presentation"] -->|참조| D["Domain"]
-    DA["Data"] -->|구현| D
-    P x--x DA
+```
+    ┌──────────────┐
+    │ Presentation │ ── UI, 상태관리, 위젯
+    └──────┬───────┘
+           │ depends on (인터페이스만 참조)
+           ▼
+    ┌──────────────┐
+    │    Domain    │ ── 순수 비즈니스 로직 (프레임워크 무관)
+    └──────▲───────┘
+           │ implements (구현)
+    ┌──────┴───────┐
+    │     Data     │ ── API 호출, DB 저장, DTO 변환
+    └──────────────┘
 
-    style D fill:#fff3e0,stroke:#f57c00
-    style P fill:#e1f5fe,stroke:#0288d1
-    style DA fill:#e8f5e9,stroke:#388e3c
+    ※ Presentation ↔ Data 직접 참조 금지
+    ※ Domain은 어디에도 의존하지 않음 (가장 안쪽 원)
 ```
 
 | 규칙 | 설명 |
@@ -352,7 +346,7 @@ class StockRepositoryImpl implements StockRepository {
 
 ### 5-1. Page (진입점)
 
-`HookWidget`으로 DI 주입과 Provider 생성을 담당.
+`HookWidget`으로 DI 주입과 Bloc 생성을 담당.
 
 ```dart
 // presentation/pages/stock/stock_page.dart
@@ -365,26 +359,21 @@ class StockPage extends HookWidget {
     // 1. Hook으로 컨트롤러/리소스 초기화
     final tabScrollController = useTabScrollController(tabViewCount: 5);
 
-    // 2. ChangeNotifierProvider로 Provider 생성 + DI 주입
-    return ChangeNotifierProvider(
-      create: (_) => StockProvider(
+    // 2. BlocProvider로 Bloc 생성 + DI 주입
+    return BlocProvider(
+      create: (_) => StockBloc(
         stockRepository: getIt<StockRepository>(),        // ← 인터페이스로 주입
         watchlistRepository: getIt<WatchlistRepository>(), // ← 인터페이스로 주입
         toggleWatchlistUseCase: getIt<ToggleWatchlistUseCase>(),
         checkTargetPriceUseCase: getIt<CheckTargetPriceUseCase>(),
-      )..onInitialized(stockCode),
+      )..add(StockInitializedEvent(stockCode)),
 
       // 3. View에 위임
-      child: HookBuilder(
-        builder: (context) {
-          // 4. Side effect Hook (알림 등)
-          useListenableEffect(
-            context.read<StockProvider>(),
-            () => context.read<StockProvider>().state.triggeredAlert,
-            (alert) => _showAlertSnackBar(context, alert),
-          );
-          return StockView(tabScrollController: tabScrollController);
-        },
+      child: BlocListener<StockBloc, StockState>(
+        listenWhen: (prev, curr) => curr.triggeredAlert != null,
+        listener: (context, state) =>
+            _showAlertSnackBar(context, state.triggeredAlert),
+        child: StockView(tabScrollController: tabScrollController),
       ),
     );
   }
@@ -392,19 +381,19 @@ class StockPage extends HookWidget {
 ```
 
 **Page의 책임:**
-1. GetIt에서 의존성을 꺼내 Provider에 주입
+1. GetIt에서 의존성을 꺼내 Bloc에 주입
 2. Hook으로 리소스(컨트롤러 등) 초기화
-3. Side effect(SnackBar, Navigation 등) 연결
+3. Side effect(SnackBar, Navigation 등) BlocListener로 연결
 4. View 위젯에 렌더링 위임
 
-### 5-2. Provider (상태 관리)
+### 5-2. Bloc (상태 관리)
 
-`ChangeNotifier`를 상속하여 상태 변경을 통지.
+`Bloc<Event, State>`를 상속하여 이벤트 기반으로 상태를 변경.
 
 ```dart
-// presentation/pages/stock/stock_provider.dart
-class StockProvider extends ChangeNotifier {
-  StockProvider({
+// presentation/pages/stock/stock_bloc.dart
+class StockBloc extends Bloc<StockEvent, StockState> {
+  StockBloc({
     required StockRepository stockRepository,
     required WatchlistRepository watchlistRepository,
     required ToggleWatchlistUseCase toggleWatchlistUseCase,
@@ -412,46 +401,47 @@ class StockProvider extends ChangeNotifier {
   }) : _stockRepository = stockRepository,
        _watchlistRepository = watchlistRepository,
        _toggleWatchlistUseCase = toggleWatchlistUseCase,
-       _checkTargetPriceUseCase = checkTargetPriceUseCase;
-
-  StockState _state = const StockState();
-  StockState get state => _state;
-
-  Future<void> onInitialized(String code) async {
-    await _fetchStock(code);
-    if (_state.hasError) return;
-    await _fetchWatchlist();
-    await _subscribeTick(code);
+       _checkTargetPriceUseCase = checkTargetPriceUseCase,
+       super(const StockState()) {
+    on<StockInitializedEvent>(_onInitialized);
+    on<StockTickReceivedEvent>(_onTickReceived);
   }
 
-  Future<void> _fetchStock(String code) async {
+  Future<void> _onInitialized(
+    StockInitializedEvent event,
+    Emitter<StockState> emit,
+  ) async {
+    await _fetchStock(event.code, emit);
+    if (state.hasError) return;
+    await _fetchWatchlist(emit);
+    await _subscribeTick(event.code, emit);
+  }
+
+  Future<void> _fetchStock(String code, Emitter<StockState> emit) async {
     try {
-      _state = _state.copyWith(
+      emit(state.copyWith(
         stock: await _stockRepository.getStock(code),
         isLoading: false,
-      );
+      ));
     } catch (_) {
-      _state = _state.copyWith(stock: const Stock(), isLoading: false);
-      notifyListeners();
+      emit(state.copyWith(stock: const Stock(), isLoading: false));
       rethrow;   // ← 글로벌 에러 핸들러로 전파
     }
-    notifyListeners();
   }
 
   @override
-  void dispose() {
-    _disposed = true;
+  Future<void> close() {
     _tickSubscription?.cancel();
     _stockRepository.disconnect();
-    super.dispose();
+    return super.close();
   }
 }
 ```
 
-**Provider의 책임:**
-- 불변 State를 `copyWith`로 갱신 후 `notifyListeners()` 호출
+**Bloc의 책임:**
+- 이벤트(Event)를 받아 불변 State를 `emit(state.copyWith(...))` 으로 갱신
 - Repository / UseCase를 호출하여 데이터 fetch
-- Stream 구독 및 생명주기 관리 (dispose)
+- Stream 구독 및 생명주기 관리 (close)
 - 에러 발생 시 `rethrow` / `Error.throwWithStackTrace`로 글로벌 로깅 지원
 
 ### 5-3. State (불변 상태)
@@ -485,16 +475,16 @@ abstract class StockState with _$StockState {
 
 ### 5-4. View + Widgets (UI)
 
-`StatelessWidget` + `Selector`로 선택적 리빌드.
+`StatelessWidget` + `BlocSelector`로 선택적 리빌드.
 
 ```dart
 // presentation/pages/stock/stock_view.dart
 class StockView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Selector<StockProvider, ({bool hasError, bool isLoading})>(
-      selector: (_, p) =>
-          (hasError: p.state.hasError, isLoading: p.state.isLoading),
+    return BlocSelector<StockBloc, StockState, ({bool hasError, bool isLoading})>(
+      selector: (state) =>
+          (hasError: state.hasError, isLoading: state.isLoading),
       builder: (context, state, _) {
         if (state.hasError) return /* 에러 UI */;
         if (state.isLoading) return /* 로딩 UI */;
@@ -506,25 +496,20 @@ class StockView extends StatelessWidget {
 ```
 
 **UI 규칙:**
-- `Selector`로 필요한 상태만 구독 → 불필요한 rebuild 방지
+- `BlocSelector`로 필요한 상태만 구독 → 불필요한 rebuild 방지
 - 섹션별 위젯 파일 분리 (`widgets/` 디렉토리)
-- View는 `StatelessWidget` (상태는 Provider가 관리)
+- View는 `StatelessWidget` (상태는 Bloc이 관리)
 
 ### 5-5. Custom Hooks
 
 재사용 가능한 상태 로직을 Hook으로 추출.
 
 ```dart
-// 범용 Listenable 변경 감지
-void useListenableEffect<T>(
-  Listenable listenable,
-  T Function() selector,
-  void Function(T value) effect,
-);
-
 // 탭-스크롤 동기화 컨트롤러
 TabScrollController useTabScrollController({required int tabViewCount});
 ```
+
+> Side effect(SnackBar, Navigation 등)는 `BlocListener`로 처리하므로 `useListenableEffect`가 필요 없습니다.
 
 ---
 
@@ -579,20 +564,27 @@ Future<void> initDependencies() async {
 }
 ```
 
-```mermaid
-graph LR
-    subgraph GetIt["GetIt Container"]
-        direction TB
-        S["Singleton"]
-        F["Factory"]
-    end
-
-    S --> DS["DataSource"]
-    S --> R["Repository<br/>(인터페이스 타입 등록)"]
-    F --> UC["UseCase"]
-
-    R -.->|주입| DS
-    UC -.->|주입| R
+```
+┌─ GetIt Container ──────────────────────────────────────────┐
+│                                                            │
+│  Singleton (앱 생명주기 동안 유지)                            │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │  DataSource ──────────────────────┐                │    │
+│  │  ├── WatchlistDataSourceLocal     │                │    │
+│  │  ├── StockDataSourceEzar          │ 주입            │    │
+│  │  └── StockTickDataSourceEzar      ▼                │    │
+│  │  Repository (인터페이스 타입 등록)                    │    │
+│  │  ├── StockRepository      ← StockRepositoryImpl    │    │
+│  │  └── WatchlistRepository  ← WatchlistRepositoryImpl│    │
+│  └────────────────────────────────────────────────────┘    │
+│                                          │ 주입             │
+│  Factory (매번 새 인스턴스)                 ▼                 │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │  UseCase                                           │    │
+│  │  ├── ToggleWatchlistUseCase                        │    │
+│  │  └── CheckTargetPriceUseCase                       │    │
+│  └────────────────────────────────────────────────────┘    │
+└────────────────────────────────────────────────────────────┘
 ```
 
 **등록 규칙:**
@@ -607,38 +599,38 @@ graph LR
 
 ## 8. 상태 관리 패턴
 
-```mermaid
-sequenceDiagram
-    participant U as User Action
-    participant P as Provider
-    participant S as State (Freezed)
-    participant V as View (Selector)
-
-    U->>P: onFavoriteToggled()
-    P->>P: _state = _state.copyWith(...)
-    P->>V: notifyListeners()
-    V->>V: Selector가 변경된 부분만 rebuild
+```
+User Action          Bloc                  State (Freezed)        View (BlocSelector)
+    │                    │                      │                      │
+    │ add(FavoriteToggled│Event())              │                      │
+    │───────────────────▶│                      │                      │
+    │                    │ emit(state.copyWith(│))                     │
+    │                    │─────────────────────▶│                      │
+    │                    │                      │                      │
+    │                    │                      │   emit() 후           │
+    │                    │                      │─────────────────────▶│
+    │                    │                      │   BlocSelector가      │
+    │                    │                      │   변경된 부분만        │
+    │                    │                      │   rebuild             │
 ```
 
 ### 상태 변경 흐름
 
 ```
-1. 사용자 액션 → Provider 메서드 호출
-2. Provider가 Repository/UseCase 호출
-3. 결과를 state.copyWith(...)로 새 State 생성
-4. notifyListeners()로 UI 갱신 통지
-5. Selector가 관심 있는 상태만 비교 → 변경 시에만 rebuild
+1. 사용자 액션 → Event 추가 (add)
+2. Bloc이 이벤트 핸들러에서 Repository/UseCase 호출
+3. 결과를 emit(state.copyWith(...))로 새 State 발행
+4. BlocSelector가 관심 있는 상태만 비교 → 변경 시에만 rebuild
 ```
 
 ### 에러 처리 패턴
 
 ```dart
-// Provider 내부
+// Bloc 내부
 try {
-  _state = _state.copyWith(stock: await _stockRepository.getStock(code));
+  emit(state.copyWith(stock: await _stockRepository.getStock(code)));
 } catch (_) {
-  _state = _state.copyWith(stock: const Stock(), isLoading: false);
-  notifyListeners();
+  emit(state.copyWith(stock: const Stock(), isLoading: false));
   rethrow;           // ← runZonedGuarded로 전파 → 글로벌 로깅
 }
 ```
@@ -655,13 +647,13 @@ runZonedGuarded(() async {
 ### 실시간 스트림 패턴
 
 ```dart
-// Provider 내부 — 스트림 구독 + 자동 재연결
-Future<void> _subscribeTick(String code) async {
+// Bloc 내부 — 스트림 구독 + 자동 재연결
+Future<void> _subscribeTick(String code, Emitter<StockState> emit) async {
   await _stockRepository.connect();
   _tickSubscription = _stockRepository
       .stockTickStream(code)
       .listen(
-        (tick) async { /* 상태 갱신 */ },
+        (tick) async { add(StockTickReceivedEvent(tick)); },
         onError: (error, stackTrace) {
           _tickSubscription?.cancel();
           _stockRepository.disconnect();
@@ -678,39 +670,42 @@ Future<void> _subscribeTick(String code) async {
 
 ### 초기 로딩
 
-```mermaid
-sequenceDiagram
-    participant Page as StockPage
-    participant Prov as StockProvider
-    participant Repo as StockRepository
-    participant DS as DataSource
-
-    Page->>Prov: onInitialized(code)
-    Prov->>Repo: getStock(code)
-    Repo->>DS: getStock(code)
-    DS-->>Repo: StockModel (DTO)
-    Repo-->>Prov: Stock (Entity)
-    Prov->>Prov: state.copyWith(stock, isLoading: false)
-    Prov-->>Page: notifyListeners()
+```
+StockPage            StockBloc             StockRepository        DataSource
+    │                     │                     │                     │
+    │ add(StockInitialized│Event(code))          │                     │
+    │────────────────────▶│                     │                     │
+    │                     │ getStock(code)      │                     │
+    │                     │────────────────────▶│                     │
+    │                     │                     │ getStock(code)      │
+    │                     │                     │────────────────────▶│
+    │                     │                     │                     │
+    │                     │                     │◀─ StockModel (DTO) ─│
+    │                     │◀─ Stock (Entity) ───│                     │
+    │                     │                     │                     │
+    │                     │ emit(state.copyWith(stock, isLoading: false))
+    │◀─ emit()────────────│                     │                     │
 ```
 
 ### 실시간 스트림
 
-```mermaid
-sequenceDiagram
-    participant DS as DataSource<br/>(Timer + BehaviorSubject)
-    participant Repo as StockRepository
-    participant Prov as StockProvider
-    participant UI as View (Selector)
-
-    loop 5초마다
-        DS->>Repo: StockTickMessage (DTO)
-        Repo->>Prov: Stock (Entity)
-        Prov->>Prov: state.copyWith(stock: updated)
-        Prov->>Prov: checkTargetPriceUseCase(...)
-        Prov-->>UI: notifyListeners()
-        UI->>UI: Selector rebuild
-    end
+```
+DataSource               StockRepository       StockBloc              View (BlocSelector)
+(Timer+BehaviorSubject)       │                     │                     │
+    │                         │                     │                     │
+    │ ┌─ loop 5초마다 ─────────────────────────────────────────────────┐  │
+    │ │                       │                     │                  │  │
+    │ │  StockTickMessage     │                     │                  │  │
+    │─┼──────────────────────▶│                     │                  │  │
+    │ │                       │ Stock (Entity)      │                  │  │
+    │ │                       │────────────────────▶│                  │  │
+    │ │                       │                     │ add(TickReceived │  │
+    │ │                       │                     │ Event(...))      │  │
+    │ │                       │                     │ emit(copyWith)   │  │
+    │ │                       │                     │─────────────────▶│  │
+    │ │                       │                     │  BlocSelector    │  │
+    │ │                       │                     │  rebuild         │  │
+    │ └────────────────────────────────────────────────────────────────┘  │
 ```
 
 ### 변환 흐름 요약
@@ -722,9 +717,9 @@ sequenceDiagram
        ↓ Model (DTO)
    Repository Impl
        ↓ Entity (Domain)
-   Provider
+   Bloc
        ↓ State (Freezed)
-   View (Selector)
+   View (BlocSelector)
        ↓ UI
    [사용자 화면]
 ```
@@ -812,9 +807,10 @@ getIt.registerSingleton<NewsRepository>(
 ```
 presentation/pages/news/
 ├── news_page.dart          ← HookWidget, DI 주입
-├── news_provider.dart      ← ChangeNotifier
+├── news_bloc.dart          ← Bloc<NewsEvent, NewsState>
+├── news_event.dart         ← 이벤트 정의
 ├── news_state.dart         ← @freezed State
-├── news_view.dart          ← StatelessWidget + Selector
+├── news_view.dart          ← StatelessWidget + BlocSelector
 └── widgets/
     └── news_card_view.dart
 ```
@@ -834,7 +830,7 @@ test/
 ├── data/repositories/
 │   └── news_repository_impl_test.dart
 └── presentation/pages/news/
-    └── news_provider_test.dart
+    └── news_bloc_test.dart
 ```
 
 ---
@@ -852,7 +848,8 @@ test/
 | Model (DTO) | `{이름}_model.dart` | `stock_model.dart` |
 | UseCase | `{동사}_{대상}_use_case.dart` | `toggle_watchlist_use_case.dart` |
 | Page | `{페이지명}_page.dart` | `stock_page.dart` |
-| Provider | `{페이지명}_provider.dart` | `stock_provider.dart` |
+| Bloc | `{페이지명}_bloc.dart` | `stock_bloc.dart` |
+| Event | `{페이지명}_event.dart` | `stock_event.dart` |
 | State | `{페이지명}_state.dart` | `stock_state.dart` |
 | View | `{페이지명}_view.dart` | `stock_view.dart` |
 | Widget | `{페이지명}_{섹션}_view.dart` | `stock_price_view.dart` |
@@ -870,7 +867,8 @@ test/
 | DataSource | `{이름}DataSource{소스}` | `StockDataSourceEzar` |
 | Model | `{이름}Model` | `StockModel` |
 | UseCase | `{동사}{대상}UseCase` | `ToggleWatchlistUseCase` |
-| Provider | `{페이지}Provider` | `StockProvider` |
+| Bloc | `{페이지}Bloc` | `StockBloc` |
+| Event | `{페이지}{동작}Event` | `StockInitializedEvent` |
 | State | `{페이지}State` | `StockState` |
 
 ### DataSource 그룹명
@@ -922,9 +920,8 @@ test/
 │       └── watchlist_repository_impl_test.dart
 └── presentation/
     ├── hooks/
-    │   └── use_listenable_effect_test.dart
     └── pages/stock/
-        ├── stock_provider_test.dart
+        ├── stock_bloc_test.dart
         └── stock_view_test.dart
 ```
 
@@ -937,8 +934,8 @@ test/
 | **Data Model** | fromJson/toJson, 기본값 | 없음 | flutter_test |
 | **Data DataSource** | API 호출, DB 접근 로직 | Hive Box 등 | mocktail, fake_async |
 | **Data Repository** | DTO → Entity 변환, 스트림 변환 | DataSource | mocktail |
-| **Presentation Provider** | 상태 전이, 에러 처리, 생명주기 | Repository, UseCase | mocktail, fake_async |
-| **Presentation View** | 위젯 렌더링, 상태별 UI 분기 | Provider | flutter_test |
+| **Presentation Bloc** | 상태 전이, 에러 처리, 생명주기 | Repository, UseCase | mocktail, fake_async, bloc_test |
+| **Presentation View** | 위젯 렌더링, 상태별 UI 분기 | Bloc | flutter_test |
 | **Hooks** | 콜백 호출 조건, 리소스 정리 | Listenable | flutter_test |
 
 ### 테스트 패턴
@@ -949,23 +946,25 @@ class MockStockRepository extends Mock implements StockRepository {}
 
 void main() {
   late MockStockRepository mockRepo;
-  late StockProvider provider;
 
   setUp(() {
     mockRepo = MockStockRepository();
-    provider = StockProvider(stockRepository: mockRepo, ...);
   });
 
-  test('fetchStock 성공 시 isLoading이 false가 된다', () async {
-    when(() => mockRepo.getStock(any())).thenAnswer(
-      (_) async => const Stock(code: '005930', name: '삼성전자'),
-    );
-
-    await provider.onInitialized('005930');
-
-    expect(provider.state.isLoading, false);
-    expect(provider.state.stock.code, '005930');
-  });
+  blocTest<StockBloc, StockState>(
+    'StockInitializedEvent 시 isLoading이 false가 된다',
+    build: () => StockBloc(stockRepository: mockRepo, ...),
+    setUp: () {
+      when(() => mockRepo.getStock(any())).thenAnswer(
+        (_) async => const Stock(code: '005930', name: '삼성전자'),
+      );
+    },
+    act: (bloc) => bloc.add(StockInitializedEvent('005930')),
+    expect: () => [
+      isA<StockState>().having((s) => s.isLoading, 'isLoading', false),
+      isA<StockState>().having((s) => s.stock.code, 'stock.code', '005930'),
+    ],
+  );
 }
 ```
 
@@ -975,7 +974,7 @@ void main() {
 
 | 카테고리 | 라이브러리 | 역할 |
 |---------|-----------|------|
-| **상태 관리** | provider | ChangeNotifier 기반 상태 구독 |
+| **상태 관리** | flutter_bloc | BLoC 패턴 기반 이벤트 구동 상태 관리 |
 | **불변 객체** | freezed / freezed_annotation | Entity, State, DTO 코드 생성 |
 | **DI** | get_it | 서비스 로케이터 패턴 |
 | **JSON** | json_serializable / json_annotation | DTO fromJson/toJson 코드 생성 |
@@ -983,7 +982,7 @@ void main() {
 | **리액티브** | rxdart | BehaviorSubject (실시간 스트림) |
 | **UI Hook** | flutter_hooks | 재사용 가능한 상태 로직 |
 | **차트** | fl_chart | 가격 그래프 |
-| **테스트** | mocktail, fake_async | 모킹, 비동기 테스트 |
+| **테스트** | mocktail, fake_async, bloc_test | 모킹, 비동기 테스트, Bloc 상태 전이 테스트 |
 | **코드 생성** | build_runner | freezed, json_serializable, hive 통합 |
 
 ---
@@ -1008,10 +1007,10 @@ void main() {
 ### Presentation Layer
 
 - [ ] Page는 HookWidget, DI 주입 담당
-- [ ] Provider는 ChangeNotifier, State를 copyWith로 갱신
+- [ ] Bloc은 Event를 받아 State를 emit으로 갱신
 - [ ] State는 `@freezed` 불변 객체
-- [ ] View는 StatelessWidget + Selector로 선택적 리빌드
-- [ ] Provider에서 에러 발생 시 `rethrow` 사용
+- [ ] View는 StatelessWidget + BlocSelector로 선택적 리빌드
+- [ ] Bloc에서 에러 발생 시 `rethrow` 사용
 
 ### DI
 

@@ -1,24 +1,26 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_coding_test/core/extensions/number_format_extension.dart';
-import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_bloc.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_state.dart';
 
 class StockPriceView extends StatelessWidget {
   const StockPriceView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Selector<
-      StockProvider,
+    return BlocSelector<
+      StockBloc,
+      StockState,
       ({int currentPrice, double changeRate, List<int> priceHistory})
     >(
-      selector: (_, p) => (
-        currentPrice: p.state.stock.currentPrice,
-        changeRate: p.state.stock.changeRate,
-        priceHistory: p.state.stock.priceHistory,
+      selector: (state) => (
+        currentPrice: state.stock.currentPrice,
+        changeRate: state.stock.changeRate,
+        priceHistory: state.stock.priceHistory,
       ),
-      builder: (context, stock, _) {
+      builder: (context, stock) {
         final spots = stock.priceHistory
             .asMap()
             .entries

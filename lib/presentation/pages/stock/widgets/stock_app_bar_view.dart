@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_coding_test/domain/watchlist/watchlist.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_bloc.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_event.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/stock_page.dart';
-import 'package:flutter_coding_test/presentation/pages/stock/stock_provider.dart';
+import 'package:flutter_coding_test/presentation/pages/stock/stock_state.dart';
 import 'package:flutter_coding_test/presentation/pages/stock/widgets/stock_watchlist_dialog.dart';
-import 'package:provider/provider.dart';
 
 class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
   const StockAppBarView({
@@ -23,13 +25,17 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       title:
-          Selector<StockProvider, ({String name, String code, String logoUrl})>(
-            selector: (_, p) => (
-              name: p.state.stock.name,
-              code: p.state.stock.code,
-              logoUrl: p.state.stock.logoUrl,
+          BlocSelector<
+            StockBloc,
+            StockState,
+            ({String name, String code, String logoUrl})
+          >(
+            selector: (state) => (
+              name: state.stock.name,
+              code: state.stock.code,
+              logoUrl: state.stock.logoUrl,
             ),
-            builder: (context, stock, _) => Row(
+            builder: (context, stock) => Row(
               children: [
                 CircleAvatar(
                   radius: 16,
@@ -69,29 +75,32 @@ class StockAppBarView extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
       actions: [
-        Selector<StockProvider, ({bool isInWatchlist, String code})>(
-          selector: (_, p) =>
-              (isInWatchlist: p.state.isInWatchlist, code: p.state.stock.code),
-          builder: (context, data, _) => IconButton(
+        BlocSelector<StockBloc, StockState,
+            ({bool isInWatchlist, String code})>(
+          selector: (state) =>
+              (isInWatchlist: state.isInWatchlist, code: state.stock.code),
+          builder: (context, data) => IconButton(
             icon: Icon(
               data.isInWatchlist ? Icons.favorite : Icons.favorite_border,
               color: data.isInWatchlist ? Colors.red : null,
             ),
             onPressed: () async {
-              final provider = context.read<StockProvider>();
-              final needsDialog = await provider.onFavoriteToggled(data.code);
-              if (!needsDialog || !context.mounted) return;
+              final bloc = context.read<StockBloc>();
+              if (data.isInWatchlist) {
+                bloc.add(StockFavoriteToggled(stockCode: data.code));
+                return;
+              }
               final result =
                   await showDialog<({int targetPrice, AlertType alertType})>(
-                    context: context,
-                    builder: (_) => const StockWatchlistDialog(),
-                  );
+                context: context,
+                builder: (_) => const StockWatchlistDialog(),
+              );
               if (result == null) return;
-              await provider.onWatchlistAdded(
+              bloc.add(StockWatchlistAdded(
                 stockCode: data.code,
                 targetPrice: result.targetPrice,
                 alertType: result.alertType,
-              );
+              ));
             },
           ),
         ),
