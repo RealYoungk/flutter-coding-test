@@ -2,6 +2,10 @@
 
 > 이 문서는 본 프로젝트의 아키텍처를 다른 프로젝트에 적용할 때 참고하는 가이드입니다.
 
+> 본 문서는 아래 공식 문서를 기반으로 작성되었습니다.
+> - https://bloclibrary.dev/architecture/
+> - https://docs.flutter.dev/app-architecture/guide
+
 ---
 
 ## 목차
@@ -26,6 +30,12 @@
 
 3계층 Clean Architecture를 채택합니다. 핵심 원칙은 **의존성 역전(DIP)** 입니다. 안쪽 레이어(Domain)는 바깥 레이어를 모르고, 바깥 레이어만 안쪽을 참조합니다.
 
+![아키텍처 다이어그램](docs/images/architecture-2026-02-23-182036.png)
+
+![Flutter Feature Architecture](https://docs.flutter.dev/assets/images/docs/app-architecture/guide/feature-architecture-simplified-with-logic-layer.png)
+
+![Bloc Architecture](https://bloclibrary.dev/_astro/architecture.DXhmDgKF_2nO7NS.webp)
+
 ```
 ┌─────────────────────────────────────────────┐
 │            Presentation Layer               │
@@ -42,15 +52,24 @@
 ```
 ┌─ Presentation ──────────────────────────────────────────────┐
 │                                                             │
-│  Page (HookWidget) ──▶ Bloc (Event → State)                 │
-│                            │          │                     │
-│                            │          ▼                     │
-│                            │     State (Freezed)            │
-│                            │          │                     │
-│                            │          ▼                     │
-│                            │   View + Widgets (Stateless)   │
-│                            │                                │
-└────────────────────────────┼────────────────────────────────┘
+│  Page (HookWidget)                                          │
+│    ├── BlocProvider → Bloc (Event → State)                  │
+│    └── BlocListener (side effect: SnackBar 등)              │
+│                              │                              │
+│                              ▼                              │
+│                        State (Freezed)                      │
+│                              │                              │
+│                              ▼                              │
+│  StockView (StatelessWidget + BlocSelector)                  │
+│    ├── StockAppBarView (BlocSelector × 2)                   │
+│    └── ListView                                             │
+│        ├── StockPriceView (BlocSelector)                    │
+│        ├── StockSummaryView                                 │
+│        ├── StockInputView                                   │
+│        ├── StockExpansionView                               │
+│        └── StockEtcView                                     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
                              │ 참조 (인터페이스만)
 ┌─ Domain ───────────────────┼────────────────────────────────┐
 │                            ▼                                │
@@ -362,17 +381,25 @@ class StockPage extends HookWidget {
     // 2. BlocProvider로 Bloc 생성 + DI 주입
     return BlocProvider(
       create: (_) => StockBloc(
-        stockRepository: getIt<StockRepository>(),        // ← 인터페이스로 주입
-        watchlistRepository: getIt<WatchlistRepository>(), // ← 인터페이스로 주입
+        stockRepository: getIt<StockRepository>(),
+        watchlistRepository: getIt<WatchlistRepository>(),
         toggleWatchlistUseCase: getIt<ToggleWatchlistUseCase>(),
-        checkTargetPriceUseCase: getIt<CheckTargetPriceUseCase>(),
-      )..add(StockInitializedEvent(stockCode)),
+      )..add(StockInitialized(stockCode: stockCode)),
 
-      // 3. View에 위임
+      // 3. BlocListener로 side effect 처리
       child: BlocListener<StockBloc, StockState>(
-        listenWhen: (prev, curr) => curr.triggeredAlert != null,
-        listener: (context, state) =>
-            _showAlertSnackBar(context, state.triggeredAlert),
+        listenWhen: (prev, curr) =>
+            prev.stock.currentPrice != curr.stock.currentPrice &&
+            curr.needsTargetPriceAlert != null,
+        listener: (context, state) {
+          final alert = state.needsTargetPriceAlert!;
+          final direction = alert.isUpper ? '상한 돌파' : '하한 돌파';
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(
+              content: Text('${alert.stockCode} 목표가 ${alert.targetPrice}원 $direction'),
+            ));
+        },
         child: StockView(tabScrollController: tabScrollController),
       ),
     );
@@ -383,7 +410,7 @@ class StockPage extends HookWidget {
 **Page의 책임:**
 1. GetIt에서 의존성을 꺼내 Bloc에 주입
 2. Hook으로 리소스(컨트롤러 등) 초기화
-3. Side effect(SnackBar, Navigation 등) BlocListener로 연결
+3. Side effect(SnackBar, Navigation 등) BlocListener로 처리 (`listenWhen`에서 조건 판단)
 4. View 위젯에 렌더링 위임
 
 ### 5-2. Bloc (상태 관리)
@@ -397,36 +424,34 @@ class StockBloc extends Bloc<StockEvent, StockState> {
     required StockRepository stockRepository,
     required WatchlistRepository watchlistRepository,
     required ToggleWatchlistUseCase toggleWatchlistUseCase,
-    required CheckTargetPriceUseCase checkTargetPriceUseCase,
   }) : _stockRepository = stockRepository,
        _watchlistRepository = watchlistRepository,
        _toggleWatchlistUseCase = toggleWatchlistUseCase,
-       _checkTargetPriceUseCase = checkTargetPriceUseCase,
        super(const StockState()) {
-    on<StockInitializedEvent>(_onInitialized);
-    on<StockTickReceivedEvent>(_onTickReceived);
+    on<StockInitialized>(_onInitialized);
+    on<StockFavoriteToggled>(_onFavoriteToggled);
+    on<StockWatchlistAdded>(_onWatchlistAdded);
+    on<StockTickReceived>(_onTickReceived);
   }
 
   Future<void> _onInitialized(
-    StockInitializedEvent event,
+    StockInitialized event,
     Emitter<StockState> emit,
   ) async {
-    await _fetchStock(event.code, emit);
+    await _fetchStock(event.stockCode, emit);
     if (state.hasError) return;
     await _fetchWatchlist(emit);
-    await _subscribeTick(event.code, emit);
+    await _subscribeTick(event.stockCode);
   }
 
-  Future<void> _fetchStock(String code, Emitter<StockState> emit) async {
-    try {
-      emit(state.copyWith(
-        stock: await _stockRepository.getStock(code),
-        isLoading: false,
-      ));
-    } catch (_) {
-      emit(state.copyWith(stock: const Stock(), isLoading: false));
-      rethrow;   // ← 글로벌 에러 핸들러로 전파
-    }
+  void _onTickReceived(StockTickReceived event, Emitter<StockState> emit) {
+    final stock = state.stock;
+    emit(state.copyWith(
+      stock: stock.copyWith(
+        changeRate: event.tick.changeRate,
+        priceHistory: [...stock.priceHistory, event.tick.currentPrice],
+      ),
+    ));
   }
 
   @override
@@ -443,6 +468,7 @@ class StockBloc extends Bloc<StockEvent, StockState> {
 - Repository / UseCase를 호출하여 데이터 fetch
 - Stream 구독 및 생명주기 관리 (close)
 - 에러 발생 시 `rethrow` / `Error.throwWithStackTrace`로 글로벌 로깅 지원
+- UI 표시 판단(알림 등)은 State getter + BlocListener에 위임
 
 ### 5-3. State (불변 상태)
 
@@ -458,19 +484,23 @@ abstract class StockState with _$StockState {
     @Default(Stock()) Stock stock,
     @Default(true) bool isLoading,
     @Default([]) List<WatchlistItem> watchlist,
-    ({WatchlistItem item, bool isUpper})? triggeredAlert,
   }) = _StockState;
 
   // 파생 상태: 별도 필드 없이 기존 상태에서 계산
   bool get hasError => !isLoading && stock.code.isEmpty;
   bool get isInWatchlist =>
       watchlist.any((item) => item.stockCode == stock.code);
+
+  // UI 판단용 getter: 목표가 돌파 시 알림 데이터 반환, 미충족 시 null
+  ({String stockCode, int targetPrice, bool isUpper})?
+      get needsTargetPriceAlert { /* ... */ }
 }
 ```
 
 **State 설계 원칙:**
 - 모든 필드에 `@Default` 값 → `const StockState()` 로 초기화 가능
-- UI가 직접 판단할 로직은 `getter`로 (hasError, isInWatchlist 등)
+- UI가 직접 판단할 로직은 `getter`로 (hasError, isInWatchlist, needsTargetPriceAlert 등)
+- 1회성 side effect 데이터는 필드로 저장하지 않고 getter로 파생
 - State 자체에 비즈니스 로직 금지 (순수 데이터 + 파생 속성만)
 
 ### 5-4. View + Widgets (UI)
@@ -480,15 +510,29 @@ abstract class StockState with _$StockState {
 ```dart
 // presentation/pages/stock/stock_view.dart
 class StockView extends StatelessWidget {
+  const StockView({super.key, required this.tabScrollController});
+  final TabScrollController tabScrollController;
+
   @override
   Widget build(BuildContext context) {
     return BlocSelector<StockBloc, StockState, ({bool hasError, bool isLoading})>(
       selector: (state) =>
           (hasError: state.hasError, isLoading: state.isLoading),
-      builder: (context, state, _) {
+      builder: (context, state) {
         if (state.hasError) return /* 에러 UI */;
         if (state.isLoading) return /* 로딩 UI */;
-        return Scaffold(/* 메인 UI */);
+        return Scaffold(
+          appBar: StockAppBarView(tabController: ..., onTabTap: ...),
+          body: ListView(
+            children: [
+              StockPriceView(key: ...),       // 가격 섹션
+              StockSummaryView(key: ...),     // 요약 섹션
+              StockInputView(key: ...),       // 입력 섹션
+              StockExpansionView(key: ...),   // 확장 패널 섹션
+              StockEtcView(key: ...),         // 기타 섹션
+            ],
+          ),
+        );
       },
     );
   }
@@ -497,8 +541,9 @@ class StockView extends StatelessWidget {
 
 **UI 규칙:**
 - `BlocSelector`로 필요한 상태만 구독 → 불필요한 rebuild 방지
-- 섹션별 위젯 파일 분리 (`widgets/` 디렉토리)
+- 섹션별 위젯 파일 분리 (`widgets/` 디렉토리) → `{페이지}_{섹션}_view.dart`
 - View는 `StatelessWidget` (상태는 Bloc이 관리)
+- 각 섹션 위젯은 독립적으로 `BlocSelector`를 사용하여 필요한 상태만 구독
 
 ### 5-5. Custom Hooks
 
@@ -602,7 +647,7 @@ Future<void> initDependencies() async {
 ```
 User Action          Bloc                  State (Freezed)        View (BlocSelector)
     │                    │                      │                      │
-    │ add(FavoriteToggled│Event())              │                      │
+    │ add(FavoriteToggled())              │                      │
     │───────────────────▶│                      │                      │
     │                    │ emit(state.copyWith(│))                     │
     │                    │─────────────────────▶│                      │
@@ -621,6 +666,144 @@ User Action          Bloc                  State (Freezed)        View (BlocSele
 2. Bloc이 이벤트 핸들러에서 Repository/UseCase 호출
 3. 결과를 emit(state.copyWith(...))로 새 State 발행
 4. BlocSelector가 관심 있는 상태만 비교 → 변경 시에만 rebuild
+```
+
+### Props Drilling AS-IS / TO-BE
+
+`프롭스 드릴링`(상위 → 중간 → 하위로 상태/콜백을 연쇄 전달) 방식은 사용하지 않습니다.
+
+| 구분 | AS-IS (지양) | TO-BE (권장) |
+|------|--------------|--------------|
+| 상태 전달 | 상위 Widget이 받은 상태를 여러 단계로 props 전달 | 각 섹션 Widget이 `BlocSelector`로 필요한 상태만 직접 구독 |
+| 이벤트 전달 | 상위에서 만든 콜백을 하위까지 전달 | 하위 Widget에서 `context.read<Bloc>().add(...)` 직접 호출 |
+| 중간 Widget 역할 | 값은 안 쓰고 전달만 수행 | 레이아웃/조합 역할만 수행 |
+| 리빌드 범위 | 상위 변경 시 하위 연쇄 리빌드 | 변경된 상태를 구독한 Widget만 리빌드 |
+| 파라미터 전달 | 상태/콜백 파라미터 다수 전달 | 상위→하위 전달 파라미터 0개 |
+
+**규칙:**
+- 2 depth 이상 상태/콜백 props 전달 금지
+- 값을 사용하지 않는 중간 Widget(pass-through) 금지
+- 섹션 단위 Widget은 자체적으로 `BlocSelector`를 사용
+
+```dart
+// AS-IS (지양): 복잡한 props drilling
+class StockPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<StockBloc, StockState>(
+      builder: (context, state) {
+        return StockView(
+          stock: state.stock,
+          isLoading: state.isLoading,
+          hasError: state.hasError,
+          selectedTab: state.selectedTab,
+          onRefresh: () => context.read<StockBloc>().add(const StockRefreshed()),
+          onToggleFavorite: () =>
+              context.read<StockBloc>().add(const FavoriteToggled()),
+          onTabChanged: (index) =>
+              context.read<StockBloc>().add(StockTabChanged(index: index)),
+        );
+      },
+    );
+  }
+}
+
+class StockView extends StatelessWidget {
+  const StockView({
+    super.key,
+    required this.stock,
+    required this.isLoading,
+    required this.hasError,
+    required this.selectedTab,
+    required this.onRefresh,
+    required this.onToggleFavorite,
+    required this.onTabChanged,
+  });
+
+  final Stock stock;
+  final bool isLoading;
+  final bool hasError;
+  final int selectedTab;
+  final VoidCallback onRefresh;
+  final VoidCallback onToggleFavorite;
+  final ValueChanged<int> onTabChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return StockBody(
+      stock: stock,
+      isLoading: isLoading,
+      hasError: hasError,
+      selectedTab: selectedTab,
+      onRefresh: onRefresh,
+      onToggleFavorite: onToggleFavorite,
+      onTabChanged: onTabChanged,
+    );
+  }
+}
+```
+
+```dart
+// TO-BE (권장): 상위에서 하위로 상태/콜백 파라미터 0개 전달
+class StockPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const StockView();
+  }
+}
+
+class StockView extends StatelessWidget {
+  const StockView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        StockHeaderSection(),
+        StockSummarySection(),
+      ],
+    );
+  }
+}
+
+class StockHeaderSection extends StatelessWidget {
+  const StockHeaderSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<StockBloc, StockState, ({String name, bool favorite})>(
+      selector: (state) => (
+        name: state.stock.name,
+        favorite: state.stock.isFavorite,
+      ),
+      builder: (context, vm) {
+        return HeaderCard(
+          title: vm.name,
+          isFavorite: vm.favorite,
+          onTapFavorite: () =>
+              context.read<StockBloc>().add(const FavoriteToggled()),
+        );
+      },
+    );
+  }
+}
+
+class StockSummarySection extends StatelessWidget {
+  const StockSummarySection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<StockBloc, StockState, StockSummary>(
+      selector: (state) => state.stock.summary,
+      builder: (context, summary) {
+        return SummaryCard(
+          summary: summary,
+          onRefresh: () => context.read<StockBloc>().add(const StockRefreshed()),
+        );
+      },
+    );
+  }
+}
 ```
 
 ### 에러 처리 패턴
@@ -648,12 +831,12 @@ runZonedGuarded(() async {
 
 ```dart
 // Bloc 내부 — 스트림 구독 + 자동 재연결
-Future<void> _subscribeTick(String code, Emitter<StockState> emit) async {
+Future<void> _subscribeTick(String code) async {
   await _stockRepository.connect();
   _tickSubscription = _stockRepository
       .stockTickStream(code)
       .listen(
-        (tick) async { add(StockTickReceivedEvent(tick)); },
+        (tick) { add(StockTickReceived(tick: tick)); },
         onError: (error, stackTrace) {
           _tickSubscription?.cancel();
           _stockRepository.disconnect();
@@ -868,7 +1051,7 @@ test/
 | Model | `{이름}Model` | `StockModel` |
 | UseCase | `{동사}{대상}UseCase` | `ToggleWatchlistUseCase` |
 | Bloc | `{페이지}Bloc` | `StockBloc` |
-| Event | `{페이지}{동작}Event` | `StockInitializedEvent` |
+| Event | `{페이지}{동작}` (Freezed sealed class) | `StockInitialized` |
 | State | `{페이지}State` | `StockState` |
 
 ### DataSource 그룹명
@@ -952,17 +1135,23 @@ void main() {
   });
 
   blocTest<StockBloc, StockState>(
-    'StockInitializedEvent 시 isLoading이 false가 된다',
-    build: () => StockBloc(stockRepository: mockRepo, ...),
+    'StockInitialized 시 isLoading이 false가 된다',
+    build: () => StockBloc(
+      stockRepository: mockRepo,
+      watchlistRepository: mockWatchlistRepo,
+      toggleWatchlistUseCase: mockToggleUseCase,
+    ),
     setUp: () {
       when(() => mockRepo.getStock(any())).thenAnswer(
         (_) async => const Stock(code: '005930', name: '삼성전자'),
       );
     },
-    act: (bloc) => bloc.add(StockInitializedEvent('005930')),
+    act: (bloc) => bloc.add(const StockInitialized(stockCode: '005930')),
     expect: () => [
-      isA<StockState>().having((s) => s.isLoading, 'isLoading', false),
-      isA<StockState>().having((s) => s.stock.code, 'stock.code', '005930'),
+      const StockState(
+        stock: Stock(code: '005930', name: '삼성전자'),
+        isLoading: false,
+      ),
     ],
   );
 }
@@ -1010,6 +1199,7 @@ void main() {
 - [ ] Bloc은 Event를 받아 State를 emit으로 갱신
 - [ ] State는 `@freezed` 불변 객체
 - [ ] View는 StatelessWidget + BlocSelector로 선택적 리빌드
+- [ ] 프롭스 드릴링 없이 각 섹션이 필요한 상태를 직접 구독
 - [ ] Bloc에서 에러 발생 시 `rethrow` 사용
 
 ### DI
